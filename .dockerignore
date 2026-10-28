@@ -1,0 +1,49 @@
+# Secrets & kredensial
+# OPENROUTER_API_KEY bisa di-inject lewat env var runtime.
+# gtc_credentials.json HANYA dibaca dari path file app/data/, jadi harus di-mount
+# sebagai volume saat runtime (env var tidak dibaca oleh PhoneService).
+.env
+.env.*
+!.env.example
+app/data/gtc_credentials*.json
+
+# Python & virtual environment
+venv/
+.venv/
+env/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.coverage
+htmlcov/
+
+# Log & file sementara
+**/*.log
+tmp/
+temp/
+uploads/
+
+# Git, editor & OS
+.git/
+.gitignore
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Dokumen non-runtime
+AGENTS.md
+README.md
+planning.md
+*.md
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Test & tooling (tidak ikut image)
+tests/
+pytest.ini
+requirements-dev.txt
+

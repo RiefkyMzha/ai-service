@@ -1,0 +1,402 @@
+[
+    {
+        "name":"Bank BRI (Bank Rakyat Indonesia)",
+        "call":1500017
+    },
+    {
+        "name":"Bank Saqu (Eks Bank Jasa Jakarta)",
+        "call":1500388
+    },
+    {
+        "name":"Krom Bank (Eks Bank Bisnis)",
+        "call":2150996920
+    },
+    {
+        "name":"Bank BNP Paribas Indonesia",
+        "call":622150814789
+    },
+    {
+        "name":"Sumitomo Mitsui Trust Bank, Ltd.",
+        "call":62215200057
+    },
+    {
+        "name":"Icici Bank",
+        "call":62212303867
+    },
+    {
+        "name":"Bank Mandiri Taspen",
+        "call":14024
+    },
+    {
+        "name":"Bank BCA (Bank Central Asia)",
+        "call":1500888
+    },
+    {
+        "name":"Bank Mandiri",
+        "call":14000
+    },
+    {
+        "name":"Bank BNI (Bank Negara Indonesia)",
+        "call":1500046
+    },
+    {
+        "name":"Bank Tabungan Negara (Bank BTN)",
+        "call":1500286
+    },
+    {
+        "name":"Bank Mega",
+        "call":8041500010
+    },
+    {
+        "name":"Allo Bank (Eks Bank Harda)",
+        "call":8041104110
+    },
+    {
+        "name":"SeaBank (Eks Bank Kesejahteraan Ekonomi)",
+        "call":1500130
+    },
+    {
+        "name":"Bank Jago (Eks Bank Artos Indonesia)",
+        "call":1500746
+    },
+    {
+        "name":"Bank UOB Indonesia",
+        "call":14008
+    },
+    {
+        "name":"TMRW by UOB Indonesia",
+        "call":14008
+    },
+    {
+        "name":"Bank CIMB Niaga",
+        "call":14041
+    },
+    {
+        "name":"Bank SMBC Indonesia",
+        "call":1500365
+    },
+    {
+        "name":"Jenius",
+        "call":1500365
+    },
+    {
+        "name":"Permata Bank",
+        "call":1500090
+    },
+    {
+        "name":"Bank BII Maybank",
+        "call":1500611
+    },
+    {
+        "name":"Bank Sinarmas",
+        "call":1500153
+    },
+    {
+        "name":"Bank Commonwealth",
+        "call":1500030
+    },
+    {
+        "name":"Bank OCBC NISP",
+        "call":1500999
+    },
+    {
+        "name":"KB Bank Bukopin",
+        "call":14005
+    },
+    {
+        "name":"Bank Kalbar",
+        "call":8071888123
+    },
+    {
+        "name":"Bank Kaltimtara",
+        "call":8001738877
+    },
+    {
+        "name":"Bank Maluku Malut",
+        "call":8071500500
+    },
+    {
+        "name":"Bank Maspion",
+        "call":1500889
+    },
+    {
+        "name":"Bank Mestika",
+        "call":14083
+    },
+    {
+        "name":"Bank MNC",
+        "call":1500188
+    },
+    {
+        "name":"Bank Multiarta Sentosa (Bank Mas)",
+        "call":1500011
+    },
+    {
+        "name":"Bank National Nobu",
+        "call":1500278
+    },
+    {
+        "name":"Bank of China Jakarta Branch",
+        "call":215205502
+    },
+    {
+        "name":"Bank Index",
+        "call":1500670
+    },
+    {
+        "name":"Bank SulutGo (Sulawesi Utara dan Gorontalo)",
+        "call":1500659
+    },
+    {
+        "name":"Bank Papua",
+        "call":1500138
+    },
+    {
+        "name":"Bank Kalteng",
+        "call":1500526
+    },
+    {
+        "name":"Citibank",
+        "call":1500335
+    },
+    {
+        "name":"Bank DBS Indonesia",
+        "call":8041500327
+    },
+    {
+        "name":"Bank Neo Commerce (Akulaku)",
+        "call":1500190
+    },
+    {
+        "name":"Bank Panin",
+        "call":1500678
+    },
+    {
+        "name":"Bank HSBC Indonesia",
+        "call":1500700
+    },
+    {
+        "name":"Bank Mayapada",
+        "call":1500029
+    },
+    {
+        "name":"Bank Syariah Indonesia (BSI)",
+        "call":14040
+    },
+    {
+        "name":"Bank Mega Syariah",
+        "call":8041500010
+    },
+    {
+        "name":"Bank Aladin Syariah (Eks Bank Maybank Indocorp)",
+        "call":2185500947
+    },
+    {
+        "name":"Bank BCA Syariah",
+        "call":1500888
+    },
+    {
+        "name":"Bank CIMB Niaga Syariah",
+        "call":14041
+    },
+    {
+        "name":"Bank Muamalat",
+        "call":1500016
+    },
+    {
+        "name":"Bank BTPN Syariah",
+        "call":1500300
+    },
+    {
+        "name":"Bank KB Bukopin Syariah",
+        "call":1500666
+    },
+    {
+        "name":"BTN Syariah",
+        "call":1500286
+    },
+    {
+        "name":"Bank BJB Syariah",
+        "call":221500727
+    },
+    {
+        "name":"Bank Panin Dubai Syariah",
+        "call":216313700
+    },
+    {
+        "name":"Bank Aceh Syariah",
+        "call":1500845
+    },
+    {
+        "name":"Bank NTB Syariah",
+        "call":1500667
+    },
+    {
+        "name":"Bank DKI Jakarta",
+        "call":1500351
+    },
+    {
+        "name":"Bank BPD Banten",
+        "call":1500410
+    },
+    {
+        "name":"Bank Jabar dan Banten (Bank BJB)",
+        "call":14049
+    },
+    {
+        "name":"BPD DIY (Yogyakarta)",
+        "call":1500061
+    },
+    {
+        "name":"Bank Jateng",
+        "call":14066
+    },
+    {
+        "name":"Bank Jatim",
+        "call":14044
+    },
+    {
+        "name":"Bank Aceh",
+        "call":1500845
+    },
+    {
+        "name":"Bank QNB Indonesia",
+        "call":2130055300
+    },
+    {
+        "name":"Bank SBI Indonesia",
+        "call":8001724636
+    },
+    {
+        "name":"Bank Keb Hana",
+        "call":1500021
+    },
+    {
+        "name":"bLu\/Bank Digital BCA",
+        "call":1500668
+    },
+    {
+        "name":"Bank Ina Perdana",
+        "call":1500738
+    },
+    {
+        "name":"Bank CCB Indonesia",
+        "call":215663809
+    },
+    {
+        "name":"Bank Capital Indonesia",
+        "call":1500289
+    },
+    {
+        "name":"Line Bank",
+        "call":1500021
+    },
+    {
+        "name":"Bank Artha Graha International",
+        "call":8001918880
+    },
+    {
+        "name":"Bank Index Selindo",
+        "call":1500670
+    },
+    {
+        "name":"Bank Jasa Jakarta",
+        "call":1500388
+    },
+    {
+        "name":"BPR KS (BPR Karyajatnika Sadaya)",
+        "call":224556677
+    },
+    {
+        "name":"Batara ePos",
+        "call":1500286
+    },
+    {
+        "name":"Bank CTBC (China Trust) Indonesia",
+        "call":8071221111
+    },
+    {
+        "name":"China Construction Bank Indonesia",
+        "call":5663809
+    },
+    {
+        "name":"Bank Credit Agricole Indosuez",
+        "call":2129522663
+    },
+    {
+        "name":"Bank Arta Niaga Kencana",
+        "call":8001918880
+    },
+    {
+        "name":"Amar Bank",
+        "call":2140005859
+    },
+    {
+        "name":"Bank Sumut",
+        "call":14002
+    },
+    {
+        "name":"Bank Nagari",
+        "call":150234
+    },
+    {
+        "name":"Bank BPD Bali",
+        "call":1500844
+    },
+    {
+        "name":"Bank Jtrust Indonesia",
+        "call":1500615
+    },
+    {
+        "name":"Bank Bumi Arta",
+        "call":212300893
+    },
+    {
+        "name":"Bank Riau Kepri",
+        "call":1500470
+    },
+    {
+        "name":"Bank Dipo International (Bank Sahabat Sampoerna)",
+        "call":1500035
+    },
+    {
+        "name":"IBK Bank Indonesia",
+        "call":1500978
+    },
+    {
+        "name":"Bank Sulselbar",
+        "call":1500855
+    },
+    {
+        "name":"Bank Sumselbabel",
+        "call":1500711
+    },
+    {
+        "name":"Bank Victoria",
+        "call":1500977
+    },
+    {
+        "name":"Bank Victoria Syariah",
+        "call":215600467
+    },
+    {
+        "name":"Bank Woori Saudara (BWS)",
+        "call":1500012
+    },
+    {
+        "name":"Standard Chartered Bank",
+        "call":2157999988
+    },
+    {
+        "name":"BPR Prima Master Bank",
+        "call":313531253
+    },
+    {
+        "name":"Mitsubishi UFJ Financial Group (MUFG)",
+        "call":218975148
+    },
+    {
+        "name":"Otoritas Jasa Keuangan (OJK)",
+        "call":"157"
+    }
+]

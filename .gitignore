@@ -1,0 +1,33 @@
+# Secrets & kredensial
+.env
+.env.*
+!.env.example
+app/data/gtc_credentials*.json
+
+
+# Python & virtual environment
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Log & file sementara
+*.log
+tmp/
+temp/
+uploads/
+
+# Editor & OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+

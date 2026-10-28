@@ -1,0 +1,756 @@
+{
+    "scam_knowledge_base": [
+        {
+            "kategori_pola": "Promo / Potensi Phishing Provider",
+            "keywords_terkait": [
+                "bonus"
+            ],
+            "sop_mitigasi": "Jangan klik tautan sembarangan. Cek kebenaran promo langsung di aplikasi resmi provider seluler Anda."
+        },
+        {
+            "kategori_pola": "Bukan Scam (Percakapan Normal)",
+            "keywords_terkait": [
+                "ngobrol",
+                "biasa",
+                "info"
+            ],
+            "sop_mitigasi": "Aman. Lanjutkan percakapan seperti biasa."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "bni",
+                "uangnya"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "hadiah",
+                "selamat",
+                "cek"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Spam Tidak Terklasifikasi",
+            "keywords_terkait": [
+                "link",
+                "klik",
+                "segera"
+            ],
+            "sop_mitigasi": "Abaikan dan blokir nomor pengirim."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "hadiah",
+                "pemenang",
+                "cek"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Phishing Kredensial / Hadiah",
+            "keywords_terkait": [
+                "pin",
+                "mobil",
+                "juta"
+            ],
+            "sop_mitigasi": "Jangan masukkan PIN atau data pribadi ke link yang diberikan. Blokir pengirim."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "hadiah",
+                "pemenang"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "hadiah",
+                "selamat"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Penawaran Pinjol / Kredit Ilegal",
+            "keywords_terkait": [
+                "pinjaman",
+                "bunga",
+                "syarat"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Blokir nomor pengirim. Jangan mengajukan pinjaman dari tautan SMS/Chat."
+        },
+        {
+            "kategori_pola": "Promo / Potensi Phishing Provider",
+            "keywords_terkait": [
+                "pulsa"
+            ],
+            "sop_mitigasi": "Jangan klik tautan sembarangan. Cek kebenaran promo langsung di aplikasi resmi provider seluler Anda."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "cek"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Phishing Kredensial / Hadiah",
+            "keywords_terkait": [
+                "pin"
+            ],
+            "sop_mitigasi": "Jangan masukkan PIN atau data pribadi ke link yang diberikan. Blokir pengirim."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "hadiah"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "transfer",
+                "bri",
+                "bni"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "hadiah",
+                "pemenang",
+                "undian",
+                "selamat"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "selamat"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Phishing Peringatan Bank / Perubahan Tarif",
+            "keywords_terkait": [
+                "biaya"
+            ],
+            "sop_mitigasi": "Abaikan pesan dan jangan klik link konfirmasi. Bank resmi tidak pernah meminta PIN, OTP, CVV, atau verifikasi melalui tautan di pesan."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "hadiah",
+                "undian",
+                "selamat"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "transfer",
+                "mandiri"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Penawaran Pinjol / Kredit Ilegal",
+            "keywords_terkait": [
+                "pinjaman"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Blokir nomor pengirim. Jangan mengajukan pinjaman dari tautan SMS/Chat."
+        },
+        {
+            "kategori_pola": "Phishing Peringatan Bank / Perubahan Tarif",
+            "keywords_terkait": [
+                "tarif",
+                "update"
+            ],
+            "sop_mitigasi": "Abaikan pesan dan jangan klik link konfirmasi. Bank resmi tidak pernah meminta PIN, OTP, CVV, atau verifikasi melalui tautan di pesan."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "undian",
+                "cek"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Phishing Kredensial / Hadiah",
+            "keywords_terkait": [
+                "pin",
+                "mobil"
+            ],
+            "sop_mitigasi": "Jangan masukkan PIN atau data pribadi ke link yang diberikan. Blokir pengirim."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "mandiri"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Promo / Potensi Phishing Provider",
+            "keywords_terkait": [
+                "gb"
+            ],
+            "sop_mitigasi": "Jangan klik tautan sembarangan. Cek kebenaran promo langsung di aplikasi resmi provider seluler Anda."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "hadiah",
+                "cek"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "rekening",
+                "bri"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "hadiah",
+                "pemenang",
+                "selamat"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "hadiah",
+                "pemenang",
+                "selamat",
+                "cek"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Phishing Kredensial / Hadiah",
+            "keywords_terkait": [
+                "pin",
+                "juta"
+            ],
+            "sop_mitigasi": "Jangan masukkan PIN atau data pribadi ke link yang diberikan. Blokir pengirim."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "pemenang"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "transfer",
+                "bri"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "rekening"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "pemenang",
+                "cek"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "hadiah",
+                "pemenang",
+                "undian"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Phishing Peringatan Bank / Perubahan Tarif",
+            "keywords_terkait": [
+                "tarif"
+            ],
+            "sop_mitigasi": "Abaikan pesan dan jangan klik link konfirmasi. Bank resmi tidak pernah meminta PIN, OTP, CVV, atau verifikasi melalui tautan di pesan."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "transfer"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Modus Salah Transfer Uang",
+            "keywords_terkait": [
+                "tolong"
+            ],
+            "sop_mitigasi": "Jangan langsung mentransfer balik dana tersebut. Segera hubungi pihak bank resmi Anda untuk memverifikasi apakah benar ada dana masuk atau jika itu dana dari pinjol ilegal."
+        },
+        {
+            "kategori_pola": "Penipuan Loker / Tugas Berbayar (Task Scam)",
+            "keywords_terkait": [
+                "tugas"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Jangan pernah mentransfer uang deposit awal atau memberikan data pribadi. Pekerjaan resmi tidak akan meminta Anda membayar untuk bekerja."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "selamat",
+                "cek"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Penawaran Pinjol / Kredit Ilegal",
+            "keywords_terkait": [
+                "bunga",
+                "syarat"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Blokir nomor pengirim. Jangan mengajukan pinjaman dari tautan SMS/Chat."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "bca"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "rekening",
+                "mandiri"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Penawaran Pinjol / Kredit Ilegal",
+            "keywords_terkait": [
+                "bunga",
+                "cair",
+                "syarat"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Blokir nomor pengirim. Jangan mengajukan pinjaman dari tautan SMS/Chat."
+        },
+        {
+            "kategori_pola": "Modus Salah Transfer Uang",
+            "keywords_terkait": [
+                "salah"
+            ],
+            "sop_mitigasi": "Jangan langsung mentransfer balik dana tersebut. Segera hubungi pihak bank resmi Anda untuk memverifikasi apakah benar ada dana masuk atau jika itu dana dari pinjol ilegal."
+        },
+        {
+            "kategori_pola": "Modus Sniffing / Malware APK",
+            "keywords_terkait": [
+                "aplikasi"
+            ],
+            "sop_mitigasi": "JANGAN UNDUH atau BUKA file/link yang dikirimkan. Jika berakhiran .apk, segera hapus pesan dan blokir nomornya. Jika terlanjur terbuka, segera matikan koneksi internet ponsel dan periksa m-banking."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "hadiah",
+                "undian"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Penipuan Loker / Tugas Berbayar (Task Scam)",
+            "keywords_terkait": [
+                "like"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Jangan pernah mentransfer uang deposit awal atau memberikan data pribadi. Pekerjaan resmi tidak akan meminta Anda membayar untuk bekerja."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "hadiah",
+                "undian",
+                "selamat",
+                "cek"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Modus Salah Transfer Uang",
+            "keywords_terkait": [
+                "salah",
+                "tolong"
+            ],
+            "sop_mitigasi": "Jangan langsung mentransfer balik dana tersebut. Segera hubungi pihak bank resmi Anda untuk memverifikasi apakah benar ada dana masuk atau jika itu dana dari pinjol ilegal."
+        },
+        {
+            "kategori_pola": "Penawaran Pinjol / Kredit Ilegal",
+            "keywords_terkait": [
+                "bunga",
+                "kredit",
+                "syarat"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Blokir nomor pengirim. Jangan mengajukan pinjaman dari tautan SMS/Chat."
+        },
+        {
+            "kategori_pola": "Penawaran Pinjol / Kredit Ilegal",
+            "keywords_terkait": [
+                "pinjaman",
+                "kredit",
+                "syarat"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Blokir nomor pengirim. Jangan mengajukan pinjaman dari tautan SMS/Chat."
+        },
+        {
+            "kategori_pola": "Phishing Kredensial / Hadiah",
+            "keywords_terkait": [
+                "mobil"
+            ],
+            "sop_mitigasi": "Jangan masukkan PIN atau data pribadi ke link yang diberikan. Blokir pengirim."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "undian"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Penawaran Pinjol / Kredit Ilegal",
+            "keywords_terkait": [
+                "kredit"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Blokir nomor pengirim. Jangan mengajukan pinjaman dari tautan SMS/Chat."
+        },
+        {
+            "kategori_pola": "Phishing Peringatan Bank / Perubahan Tarif",
+            "keywords_terkait": [
+                "verifikasi"
+            ],
+            "sop_mitigasi": "Abaikan pesan dan jangan klik link konfirmasi. Bank resmi tidak pernah meminta PIN, OTP, CVV, atau verifikasi melalui tautan di pesan."
+        },
+        {
+            "kategori_pola": "Penawaran Pinjol / Kredit Ilegal",
+            "keywords_terkait": [
+                "bunga"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Blokir nomor pengirim. Jangan mengajukan pinjaman dari tautan SMS/Chat."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "rekening",
+                "bni"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "hadiah",
+                "pemenang",
+                "undian",
+                "cek"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "bni"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Promo / Potensi Phishing Provider",
+            "keywords_terkait": [
+                "gb",
+                "bonus"
+            ],
+            "sop_mitigasi": "Jangan klik tautan sembarangan. Cek kebenaran promo langsung di aplikasi resmi provider seluler Anda."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "hadiah",
+                "undian",
+                "cek"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Promo / Potensi Phishing Provider",
+            "keywords_terkait": [
+                "pulsa",
+                "bonus"
+            ],
+            "sop_mitigasi": "Jangan klik tautan sembarangan. Cek kebenaran promo langsung di aplikasi resmi provider seluler Anda."
+        },
+        {
+            "kategori_pola": "Penawaran Pinjol / Kredit Ilegal",
+            "keywords_terkait": [
+                "pinjaman",
+                "bunga",
+                "kredit"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Blokir nomor pengirim. Jangan mengajukan pinjaman dari tautan SMS/Chat."
+        },
+        {
+            "kategori_pola": "Modus Sniffing / Malware APK",
+            "keywords_terkait": [
+                "resi"
+            ],
+            "sop_mitigasi": "JANGAN UNDUH atau BUKA file/link yang dikirimkan. Jika berakhiran .apk, segera hapus pesan dan blokir nomornya. Jika terlanjur terbuka, segera matikan koneksi internet ponsel dan periksa m-banking."
+        },
+        {
+            "kategori_pola": "Promo / Potensi Phishing Provider",
+            "keywords_terkait": [
+                "aktifkan"
+            ],
+            "sop_mitigasi": "Jangan klik tautan sembarangan. Cek kebenaran promo langsung di aplikasi resmi provider seluler Anda."
+        },
+        {
+            "kategori_pola": "Modus Sniffing / Malware APK",
+            "keywords_terkait": [
+                "apk"
+            ],
+            "sop_mitigasi": "JANGAN UNDUH atau BUKA file/link yang dikirimkan. Jika berakhiran .apk, segera hapus pesan dan blokir nomornya. Jika terlanjur terbuka, segera matikan koneksi internet ponsel dan periksa m-banking."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "transfer",
+                "rekening",
+                "bca"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "transfer",
+                "bri",
+                "uangnya"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Penipuan Loker / Tugas Berbayar (Task Scam)",
+            "keywords_terkait": [
+                "gaji"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Jangan pernah mentransfer uang deposit awal atau memberikan data pribadi. Pekerjaan resmi tidak akan meminta Anda membayar untuk bekerja."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "transfer",
+                "mandiri",
+                "uangnya"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "transfer",
+                "rekening",
+                "bni"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Penawaran Pinjol / Kredit Ilegal",
+            "keywords_terkait": [
+                "pinjaman",
+                "bunga",
+                "kredit",
+                "syarat"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Blokir nomor pengirim. Jangan mengajukan pinjaman dari tautan SMS/Chat."
+        },
+        {
+            "kategori_pola": "Modus Sniffing / Malware APK",
+            "keywords_terkait": [
+                "tilang"
+            ],
+            "sop_mitigasi": "JANGAN UNDUH atau BUKA file/link yang dikirimkan. Jika berakhiran .apk, segera hapus pesan dan blokir nomornya. Jika terlanjur terbuka, segera matikan koneksi internet ponsel dan periksa m-banking."
+        },
+        {
+            "kategori_pola": "Penawaran Pinjol / Kredit Ilegal",
+            "keywords_terkait": [
+                "pinjaman",
+                "bunga"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Blokir nomor pengirim. Jangan mengajukan pinjaman dari tautan SMS/Chat."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "transfer",
+                "uangnya"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "rekening",
+                "bni",
+                "uangnya"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Phishing Peringatan Bank / Perubahan Tarif",
+            "keywords_terkait": [
+                "update"
+            ],
+            "sop_mitigasi": "Abaikan pesan dan jangan klik link konfirmasi. Bank resmi tidak pernah meminta PIN, OTP, CVV, atau verifikasi melalui tautan di pesan."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "transfer",
+                "rekening"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "pemenang",
+                "undian"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Modus Sniffing / Malware APK",
+            "keywords_terkait": [
+                "apk",
+                "undangan"
+            ],
+            "sop_mitigasi": "JANGAN UNDUH atau BUKA file/link yang dikirimkan. Jika berakhiran .apk, segera hapus pesan dan blokir nomornya. Jika terlanjur terbuka, segera matikan koneksi internet ponsel dan periksa m-banking."
+        },
+        {
+            "kategori_pola": "Penipuan Loker / Tugas Berbayar (Task Scam)",
+            "keywords_terkait": [
+                "freelance"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Jangan pernah mentransfer uang deposit awal atau memberikan data pribadi. Pekerjaan resmi tidak akan meminta Anda membayar untuk bekerja."
+        },
+        {
+            "kategori_pola": "Penipuan Loker / Tugas Berbayar (Task Scam)",
+            "keywords_terkait": [
+                "paruh waktu",
+                "gaji"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Jangan pernah mentransfer uang deposit awal atau memberikan data pribadi. Pekerjaan resmi tidak akan meminta Anda membayar untuk bekerja."
+        },
+        {
+            "kategori_pola": "Penipuan Loker / Tugas Berbayar (Task Scam)",
+            "keywords_terkait": [
+                "tugas",
+                "paruh waktu",
+                "gaji"
+            ],
+            "sop_mitigasi": "Abaikan tawaran. Jangan pernah mentransfer uang deposit awal atau memberikan data pribadi. Pekerjaan resmi tidak akan meminta Anda membayar untuk bekerja."
+        },
+        {
+            "kategori_pola": "Modus Sniffing / Malware APK",
+            "keywords_terkait": [
+                "apk",
+                "resi"
+            ],
+            "sop_mitigasi": "JANGAN UNDUH atau BUKA file/link yang dikirimkan. Jika berakhiran .apk, segera hapus pesan dan blokir nomornya. Jika terlanjur terbuka, segera matikan koneksi internet ponsel dan periksa m-banking."
+        },
+        {
+            "kategori_pola": "Modus Sniffing / Malware APK",
+            "keywords_terkait": [
+                "apk",
+                "aplikasi"
+            ],
+            "sop_mitigasi": "JANGAN UNDUH atau BUKA file/link yang dikirimkan. Jika berakhiran .apk, segera hapus pesan dan blokir nomornya. Jika terlanjur terbuka, segera matikan koneksi internet ponsel dan periksa m-banking."
+        },
+        {
+            "kategori_pola": "Modus Sniffing / Malware APK",
+            "keywords_terkait": [
+                "kurir"
+            ],
+            "sop_mitigasi": "JANGAN UNDUH atau BUKA file/link yang dikirimkan. Jika berakhiran .apk, segera hapus pesan dan blokir nomornya. Jika terlanjur terbuka, segera matikan koneksi internet ponsel dan periksa m-banking."
+        },
+        {
+            "kategori_pola": "Modus Sniffing / Malware APK",
+            "keywords_terkait": [
+                "apk",
+                "tilang",
+                "aplikasi"
+            ],
+            "sop_mitigasi": "JANGAN UNDUH atau BUKA file/link yang dikirimkan. Jika berakhiran .apk, segera hapus pesan dan blokir nomornya. Jika terlanjur terbuka, segera matikan koneksi internet ponsel dan periksa m-banking."
+        },
+        {
+            "kategori_pola": "Undian Palsu (Fake Reward)",
+            "keywords_terkait": [
+                "undian",
+                "selamat"
+            ],
+            "sop_mitigasi": "Abaikan pesan. Jangan klik tautan dan jangan mentransfer biaya administrasi apa pun."
+        },
+        {
+            "kategori_pola": "Modus Penipuan Transfer Uang",
+            "keywords_terkait": [
+                "rekening",
+                "bca",
+                "bri",
+                "mandiri"
+            ],
+            "sop_mitigasi": "JANGAN TRANSFER. Segera blokir nomor. Verifikasi langsung ke pihak terkait (telepon langsung) jika ragu."
+        },
+        {
+            "kategori_pola": "Modus Salah Transfer Uang",
+            "keywords_terkait": [
+                "kembalikan"
+            ],
+            "sop_mitigasi": "Jangan langsung mentransfer balik dana tersebut. Segera hubungi pihak bank resmi Anda untuk memverifikasi apakah benar ada dana masuk atau jika itu dana dari pinjol ilegal."
+        },
+        {
+            "kategori_pola": "Modus Sniffing / Malware APK",
+            "keywords_terkait": [
+                "apk",
+                "aplikasi",
+                "install"
+            ],
+            "sop_mitigasi": "JANGAN UNDUH atau BUKA file/link yang dikirimkan. Jika berakhiran .apk, segera hapus pesan dan blokir nomornya. Jika terlanjur terbuka, segera matikan koneksi internet ponsel dan periksa m-banking."
+        },
+        {
+            "kategori_pola": "Modus Sniffing / Malware APK",
+            "keywords_terkait": [
+                "resi",
+                "aplikasi"
+            ],
+            "sop_mitigasi": "JANGAN UNDUH atau BUKA file/link yang dikirimkan. Jika berakhiran .apk, segera hapus pesan dan blokir nomornya. Jika terlanjur terbuka, segera matikan koneksi internet ponsel dan periksa m-banking."
+        }
+    ]
+}
