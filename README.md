@@ -2,37 +2,14 @@
 
 Microservice FastAPI yang menganalisis indikasi penipuan (teks, gambar, nomor telepon) dan menyusun draf penanganan darurat. Service ini **hanya mengembalikan JSON**; pembuatan PDF dan penyimpanan riwayat dilakukan backend Node.js.
 
-## Quick start
+## Setup
 
 ```powershell
 git clone <url-repo> cegahscam-ai
 cd cegahscam-ai
 python -m venv venv
 venv\Scripts\pip.exe install -r requirements.txt
-copy .env.example .env      # lalu isi OPENROUTER_API_KEY dan CEGAHSCAM_API_TOKEN
-venv\Scripts\python.exe -m uvicorn app.main:app --reload
-```
-
-Swagger: http://127.0.0.1:8000/docs · Health: http://127.0.0.1:8000/health
-
-## Prasyarat
-
-| Kebutuhan | Versi | Catatan |
-|---|---|---|
-| Python | 3.12 (minimum 3.10) | kode memakai sintaks `Path \| str` |
-| Git | terbaru | untuk clone |
-| Docker Desktop | opsional | hanya jika ingin menjalankan via container |
-| Akses internet | — | service memanggil OpenRouter |
-
-## Setup
-
-Jalankan dari **root repo** — path `.env` dan `app/data/*.json` relatif terhadap CWD.
-
-```powershell
-python -m venv venv
-venv\Scripts\pip.exe install -r requirements.txt
-copy .env.example .env
-```
+copy .env.example .env      # isi OPENROUTER_API_KEY dan CEGAHSCAM_API_TOKEN
 
 Lalu:
 
