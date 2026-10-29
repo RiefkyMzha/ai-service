@@ -10,6 +10,7 @@ cd cegahscam-ai
 python -m venv venv
 venv\Scripts\pip.exe install -r requirements.txt
 copy .env.example .env      # isi OPENROUTER_API_KEY dan CEGAHSCAM_API_TOKEN
+```
 
 Lalu:
 
