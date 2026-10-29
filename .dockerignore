@@ -7,6 +7,10 @@
 !.env.example
 app/data/gtc_credentials*.json
 
+# Dataset evaluasi tidak boleh ikut image
+eval/
+*.xlsx
+
 # Python & virtual environment
 venv/
 .venv/

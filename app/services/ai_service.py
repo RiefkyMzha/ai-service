@@ -36,13 +36,23 @@ class AIService:
                 detail="File harus berupa gambar (JPG, PNG, atau WEBP).",
             )
 
-        content = await file.read()
+        chunks: list[bytes] = []
+        total_bytes = 0
+        chunk_size = 1024 * 1024
 
-        if len(content) > MAX_IMAGE_BYTES:
-            raise HTTPException(
-                status_code=413,
-                detail="Ukuran gambar maksimal 15MB.",
-            )
+        while True:
+            chunk = await file.read(chunk_size)
+            if not chunk:
+                break
+            total_bytes += len(chunk)
+            if total_bytes > MAX_IMAGE_BYTES:
+                raise HTTPException(
+                    status_code=413,
+                    detail="Ukuran gambar maksimal 15MB.",
+                )
+            chunks.append(chunk)
+
+        content = b"".join(chunks)
 
         encoded = base64.b64encode(content).decode("ascii")
         return f"data:{content_type};base64,{encoded}"
@@ -80,7 +90,6 @@ class AIService:
             )
 
         try:
-            # requests bersifat blocking; jalankan di threadpool agar event loop bebas.
             return await run_in_threadpool(self._post_openrouter, messages)
 
         except requests.Timeout as err:
@@ -118,25 +127,31 @@ class AIService:
     ) -> dict[str, Any]:
         image_url = await self._process_image_to_base64(image)
 
-        content_array: list[dict[str, Any]] = [
+        system_instruction = (
+            f"{REASONING_PROMPT}\n\n{VISION_PROMPT}"
+            if image_url
+            else REASONING_PROMPT
+        )
+
+        user_content: list[dict[str, Any]] = [
             {
                 "type": "text",
-                "text": f"{REASONING_PROMPT}\n\nUSER TEXT: {user_text}",
+                "text": f"<untrusted_evidence>\n{user_text}\n</untrusted_evidence>",
             }
         ]
 
         if image_url:
-            content_array[0]["text"] = (
-                f"{VISION_PROMPT}\n{content_array[0]['text']}"
-            )
-            content_array.append(
+            user_content.append(
                 {
                     "type": "image_url",
                     "image_url": {"url": image_url},
                 }
             )
 
-        messages = [{"role": "user", "content": content_array}]
+        messages = [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": user_content},
+        ]
         raw_result = await self._call_openrouter(messages)
 
         try:
@@ -150,7 +165,6 @@ class AIService:
             ) from err
 
         result = normalize_analysis_result(result)
-        # Kontak resmi hanya boleh berasal dari whitelist call center.
         result["official_contact"] = self.data_loader.official_contact_for(user_text)
         return result
 
@@ -170,25 +184,28 @@ class AIService:
 
         incident_type = "FINANCIAL SCAM" if is_financial else "DATA BREACH"
 
-        prompt_text = (
-            f"{EMERGENCY_PROMPT}\n\n"
-            f"INCIDENT TYPE: {incident_type}\n"
-            f"INCIDENT DETAILS:\n{incident_text}"
-        )
-
-        content_array: list[dict[str, Any]] = [
-            {"type": "text", "text": prompt_text}
+        user_content: list[dict[str, Any]] = [
+            {
+                "type": "text",
+                "text": (
+                    f"INCIDENT TYPE: {incident_type}\n\n"
+                    f"<untrusted_evidence>\n{incident_text}\n</untrusted_evidence>"
+                ),
+            }
         ]
 
         if image_url:
-            content_array.append(
+            user_content.append(
                 {
                     "type": "image_url",
                     "image_url": {"url": image_url},
                 }
             )
 
-        messages = [{"role": "user", "content": content_array}]
+        messages = [
+            {"role": "system", "content": EMERGENCY_PROMPT},
+            {"role": "user", "content": user_content},
+        ]
 
         logger.info("Memproses laporan darurat (%s)...", incident_type)
 
@@ -199,7 +216,7 @@ class AIService:
             if not isinstance(result, dict):
                 raise ValueError("Output AI bukan object JSON.")
         except (json.JSONDecodeError, ValueError) as err:
-            logger.error("Gagal parse JSON darurat: %s", raw_result)
+            logger.error("Gagal parse JSON darurat (panjang output: %d).", len(raw_result))
             raise HTTPException(
                 status_code=500,
                 detail="Format output AI cacat.",

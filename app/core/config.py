@@ -9,4 +9,6 @@ class Settings(BaseSettings):
 
     OPENROUTER_API_KEY: str = ""
 
+    CEGAHSCAM_API_TOKEN: str = ""
+
 settings = Settings()

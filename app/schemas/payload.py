@@ -1,10 +1,8 @@
-# app/schemas/payload.py
 import re
 
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 
-# Nomor Indonesia: 08..., 628..., atau +628...
 _PHONE_PATTERN = re.compile(r"^(?:\+62|62|0)\d{7,13}$")
 
 # --- Sub-schemas ---

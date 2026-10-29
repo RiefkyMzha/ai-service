@@ -7,8 +7,11 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.datastructures import Headers, UploadFile
 
+from app.core.config import settings
 from app.main import app
 from app.services.ai_service import AIService
+
+TEST_API_TOKEN = "token-uji-bukan-rahasia"
 
 ANALYSIS_RESULT = {
     "risk_score": 80,
@@ -16,7 +19,6 @@ ANALYSIS_RESULT = {
     "scam_type": "No Scam Indicators",
     "reasons": ["Ada permintaan OTP."],
     "recommendations": ["Jangan berikan OTP."],
-    # Sengaja salah: service harus menimpa dengan whitelist bank.
     "official_contact": {"name": "Bank Palsu", "phone": "000"},
 }
 
@@ -62,8 +64,9 @@ def make_upload(
 
 
 @pytest.fixture
-def client() -> TestClient:
-    with TestClient(app) as test_client:
+def client(monkeypatch) -> TestClient:
+    monkeypatch.setattr(settings, "CEGAHSCAM_API_TOKEN", TEST_API_TOKEN)
+    with TestClient(app, headers={"X-API-Token": TEST_API_TOKEN}) as test_client:
         yield test_client
 
 

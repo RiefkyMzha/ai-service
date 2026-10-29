@@ -15,7 +15,8 @@ Kontrak implementasi untuk microservice AI CegahScam. Dokumen ini adalah acuan t
 - Semua endpoint bisnis menerima `POST`. Hanya `GET /health` yang tersedia di luar prefix.
 - Respons sukses selalu `application/json`; tidak ada streaming.
 - Service ini **tidak** membuat PDF, tidak menyimpan riwayat, dan tidak menulis ke database. Itu tanggung jawab backend Node.js.
-- Belum ada autentikasi, otorisasi, rate limit, maupun CORS. Jangan memanggil service ini langsung dari browser; akses melalui backend Node atau jaringan internal.
+- **Autentikasi:** semua endpoint di bawah `/api/v1` wajib mengirim header `X-API-Token: <CEGAHSCAM_API_TOKEN>`. Token dicek sebelum body dibaca. Tanpa/salah token → `401`; token server belum dikonfigurasi → `500` (fail closed). `GET /health`, `/docs`, `/redoc`, dan `/openapi.json` tetap terbuka tanpa token.
+- Belum ada otorisasi per-pengguna, rate limit, maupun CORS. Jangan memanggil service ini langsung dari browser; akses melalui backend Node atau jaringan internal. Token hanya boleh disimpan di backend Node, bukan di frontend.
 - Field opsional yang tidak diisi dikembalikan sebagai `null` (mis. `scam_type`, `official_contact`, `official_contact.whatsapp`).
 
 ### 1.1 Bentuk error
@@ -101,6 +102,7 @@ Menganalisis teks indikasi penipuan, opsional dengan satu gambar bukti.
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/analyze/text \
+  -H "X-API-Token: <CEGAHSCAM_API_TOKEN>" \
   -F "text_content=Halo, ini BCA. Kirim OTP ke http://bca-verifikasi.xyz" \
   -F "image=@bukti.png;type=image/png"
 ```
@@ -135,6 +137,7 @@ Menganalisis satu tangkapan layar.
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/analyze/image \
+  -H "X-API-Token: <CEGAHSCAM_API_TOKEN>" \
   -F "platform=WhatsApp" -F "image=@bukti.png;type=image/png"
 ```
 
@@ -153,6 +156,7 @@ Menggabungkan data GetContact dengan analisis LLM.
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/analyze/phone \
   -H "Content-Type: application/json" \
+  -H "X-API-Token: <CEGAHSCAM_API_TOKEN>" \
   -d '{"phone_number":"081234567890"}'
 ```
 
@@ -190,6 +194,7 @@ Menyusun kronologi dan langkah penanganan kasus penipuan finansial.
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/emergency/financial \
+  -H "X-API-Token: <CEGAHSCAM_API_TOKEN>" \
   -F "bank_korban=BCA" -F "kanal_media=WhatsApp" \
   -F "tanggal_kejadian=2026-10-27" -F "tujuan_transaksi=Pembelian barang" \
   -F "nomor_rekening_penipu=1234567890" -F "nominal_kerugian=1500000" \
@@ -228,6 +233,7 @@ Respons `200`:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/emergency/data-breach \
+  -H "X-API-Token: <CEGAHSCAM_API_TOKEN>" \
   -F "jenis_data=Data pribadi (nama, email)" -F "tanggal_kejadian=2026-10-27" \
   -F "kanal_media=Instagram" -F "tindakan_pelaku=Meminta OTP" \
   -F "status_akses=Masih bisa diakses" \
@@ -271,8 +277,9 @@ Contoh:
 | 400 | MIME gambar tidak didukung |
 | 408 | Timeout OpenRouter/GetContact |
 | 413 | Gambar > 15 MB |
+| 401 | Header `X-API-Token` tidak ada atau salah |
 | 422 | Validasi field gagal |
-| 500 | API key kosong, kredensial hilang/rusak, output AI bukan JSON |
+| 500 | API key kosong, `CEGAHSCAM_API_TOKEN` belum diatur, kredensial hilang/rusak, output AI bukan JSON |
 | 502 | Upstream AI menolak/limit, sesi GetContact kedaluwarsa |
 
 ## 6. Catatan integrasi klien

@@ -1,7 +1,5 @@
 from typing import Any, Dict
 
-# LLM kadang mengembalikan label kategori dalam bahasa Inggris.
-# Nilai yang tidak dikenal dibiarkan apa adanya (tidak memaksa 500).
 SCAM_TYPE_TRANSLATIONS = {
     "no scam indicators": "Tidak Ada Indikator Penipuan",
     "phishing / smishing / vishing": "Phishing / Smishing / Vishing",

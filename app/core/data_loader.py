@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-# Kata yang terlalu umum untuk dijadikan alias pencarian bank.
 _STOPWORDS = {"bank", "eks", "ex", "tbk", "persero"}
 
 _WORD_SPLIT = re.compile(r"[^a-z0-9]+")
@@ -32,7 +31,6 @@ class DataLoader:
 
     def _load_data(self) -> None:
         try:
-            # Memuat Call Center Bank
             bank_file = self.data_dir / "Bank_Call_Senter_Final.json"
             if bank_file.exists():
                 raw = json.loads(bank_file.read_text("utf-8"))
@@ -47,7 +45,6 @@ class DataLoader:
             else:
                 logger.warning("File tidak ditemukan: %s", bank_file)
 
-            # Memuat Knowledge Base
             kb_file = self.data_dir / "knowledge_base_cegahscam.json"
             if kb_file.exists():
                 kb_data = json.loads(kb_file.read_text("utf-8"))
@@ -58,7 +55,7 @@ class DataLoader:
             else:
                 logger.warning("File tidak ditemukan: %s", kb_file)
 
-        except Exception as e:  # noqa: BLE001 - data statis tidak boleh mematikan app
+        except Exception as e:
             logger.error("Gagal memuat data statis: %s", e)
 
     def _build_bank_index(self) -> None:

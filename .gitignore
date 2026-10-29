@@ -31,3 +31,7 @@ uploads/
 .DS_Store
 Thumbs.db
 
+
+# Dataset evaluasi: asal data belum jelas dan berpotensi memuat data pribadi
+eval/data/
+*.xlsx

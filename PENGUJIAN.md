@@ -8,7 +8,7 @@ Dokumen ini mencatat kontrak API dan hasil pengujian **input → output** yang b
 |---|---|
 | Tanggal eksekusi | 2026-10-28 11:03 (smoke sukses) & 11:19 (uji negatif §5) |
 | Metode | `pytest` (42 test, jaringan di-mock) + smoke test HTTP ke container |
-| Hasil otomatis | **42 passed** |
+| Hasil otomatis | **61 passed** |
 | Hasil smoke | **15/15 sesuai kontrak** (8 sukses, 7 negatif) |
 | Container | `cegahscam-ai`, status `healthy` |
 | Image | `cegahscam-ai:latest` — digest `sha256:53d28a0…6eed5`, 228 MB |
@@ -21,7 +21,7 @@ Dokumen ini mencatat kontrak API dan hasil pengujian **input → output** yang b
 |---|---|
 | OS host | Windows (Docker Desktop, Linux container) |
 | Python (venv) | 3.12.10 |
-| FastAPI / Pydantic | 0.104.1 / 2.5.2 |
+| FastAPI / Pydantic | 0.162.0 / 2.14.1 |
 | Image dasar | `python:3.12-slim` |
 | Endpoint health | `GET /health` |
 
@@ -258,7 +258,7 @@ Jalur `408`/`500`/`502` belum diuji lewat HTTP karena butuh kondisi khusus (API 
 
 ## 6. Pengujian otomatis
 
-Perintah: `venv\Scripts\python.exe -m pytest` → **42 passed**.
+Perintah: `venv\Scripts\python.exe -m pytest` → **61 passed**.
 
 | File | Fokus |
 |---|---|
@@ -266,6 +266,7 @@ Perintah: `venv\Scripts\python.exe -m pytest` → **42 passed**.
 | `tests/test_ai_service.py` | API key kosong, timeout, 401, JSON cacat, MIME/ukuran gambar, override kontak |
 | `tests/test_phone_service.py` | Kredensial hilang/rusak/tidak lengkap, sesi GetContact 401, enrichment kontak |
 | `tests/test_routes.py` | 5 endpoint sukses, 422/400/413, kontak per endpoint, kontak palsu ditimpa |
+| `tests/test_auth.py` | Autentikasi X-API-Token, 401 tanpa/salah token, fail-closed 500 jika token belum diatur, healthcheck terbuka |
 
 Semua akses jaringan di-mock (`AIService._call_openrouter`, `PhoneService._gtc_call`), sehingga test dapat dijalankan offline.
 

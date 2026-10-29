@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Tuple
 
 from fastapi import HTTPException
+from starlette.concurrency import run_in_threadpool
 from app.core.normalization import normalize_analysis_result
 from app.services.ai_service import AIService
 
@@ -22,6 +23,12 @@ APP_VERSION = "8.4.0"
 ANDROID_OS = "android 9"
 LANG = "en_US"
 COUNTRY = "id"
+
+def _mask_phone(number: str) -> str:
+    if len(number) <= 7:
+        return "*" * len(number)
+    return number[:5] + "*" * (len(number) - 7) + number[-2:]
+
 
 class PhoneService:
     def __init__(self, ai_service: AIService):
@@ -116,7 +123,7 @@ class PhoneService:
         except requests.Timeout:
             raise HTTPException(status_code=408, detail="Layanan pencarian nomor timeout.")
         except Exception as e:
-            logger.error(f"Gagal memanggil API GetContact: {e}")
+            logger.error("Gagal memanggil API GetContact (%s).", type(e).__name__)
             raise HTTPException(status_code=502, detail="Layanan pencarian nomor sedang gangguan.")
 
     async def analyze_phone_number(self, phone_number: str) -> dict[str, Any]:
@@ -136,8 +143,8 @@ class PhoneService:
             "token": cred["token"],
         }
         
-        logger.info(f"Mencari informasi GetContact untuk nomor: {normalized_phone}")
-        code, body = self._gtc_call("/v2.8/search", payload, cred)
+        logger.info("Mencari informasi GetContact untuk nomor: %s", _mask_phone(normalized_phone))
+        code, body = await run_in_threadpool(self._gtc_call, "/v2.8/search", payload, cred)
 
         if not isinstance(body, dict):
             logger.error("Respons GetContact bukan object JSON.")
@@ -157,12 +164,14 @@ class PhoneService:
             f"GETCONTACT TAGS: {', '.join([t.get('tag') for t in gtc_tags]) if gtc_tags else 'No tags found'}\n"
         )
         
-        messages = [{
-            "role": "user",
-            "content": f"{REASONING_PROMPT}\n\nEVIDENCE:\n{gtc_context}"
-        }]
+        messages = [
+            {"role": "system", "content": REASONING_PROMPT},
+            {
+                "role": "user",
+                "content": f"<untrusted_evidence>\n{gtc_context}</untrusted_evidence>",
+            },
+        ]
         
-        # 4. Analisis akhir menggunakan AI Service
         logger.info("Mengirim data GetContact ke LLM untuk analisis risiko...")
         raw_result = await self.ai_service._call_openrouter(messages)
 
@@ -175,7 +184,6 @@ class PhoneService:
             raise HTTPException(status_code=500, detail="Format output AI cacat.") from err
 
         result = normalize_analysis_result(result)
-        # Kontak resmi hanya dari whitelist; profil GetContact jadi bukti tambahan.
         result["official_contact"] = self.ai_service.data_loader.official_contact_for(
             gtc_context
         )

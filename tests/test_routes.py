@@ -31,7 +31,6 @@ def test_analyze_text_attaches_official_contact_from_whitelist(
     body = response.json()
     assert body["official_contact"]["name"] == "Bank BCA (Bank Central Asia)"
     assert body["official_contact"]["phone"] == "1500888"
-    # Label Inggris dari LLM dinormalisasi ke Bahasa Indonesia.
     assert body["scam_type"] == "Tidak Ada Indikator Penipuan"
 
 
@@ -113,7 +112,6 @@ def test_financial_emergency_unknown_bank_has_no_contact(client, fake_openrouter
     )
 
     assert response.status_code == 200
-    # Model mengembalikan kontak palsu, tapi harus ditimpa menjadi null.
     assert response.json()["official_contact"] is None
 
 
