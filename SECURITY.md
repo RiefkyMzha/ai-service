@@ -6,10 +6,10 @@ Dokumen ini merangkum seluruh mekanisme pertahanan berlapis (*Defense-in-Depth*)
 
 ## 1. Arsitektur Pertahanan Berlapis (Overview)
 
-Service ini dirancang sebagai **layanan internal tertutup** yang hanya dapat diakses oleh backend resmi (Node.js), bukan langsung oleh publik atau browser frontend.
+Service ini dirancang sebagai **layanan internal tertutup** yang hanya dapat diakses oleh backend resmi aplikasi web (backend utama), bukan langsung oleh publik atau browser frontend.
 
 ```
-[ Request Masuk dari Node.js ]
+[ Request Masuk dari Backend Utama ]
               │
               ▼
    ┌────────────────────────────────────────────────────────┐
@@ -62,7 +62,7 @@ Service ini dirancang sebagai **layanan internal tertutup** yang hanya dapat dia
 ## 2. Rincian Layer Keamanan
 
 ### Layer 1: Autentikasi Antar-Layanan (Service-to-Service)
-- **Token Rahasia Antar-Service:** Semua rute bisnis di bawah `/api/v1/*` mewajibkan header `X-API-Token`. Token ini disimpan di `.env` (`CEGAHSCAM_API_TOKEN`) dan dibagikan secara rahasia ke backend Node.js.
+- **Token Rahasia Antar-Service:** Semua rute bisnis di bawah `/api/v1/*` mewajibkan header `X-API-Token`. Token ini disimpan di `.env` (`CEGAHSCAM_API_TOKEN`) dan dibagikan secara rahasia ke backend utama aplikasi web.
 - **Pemeriksaan Sebelum Membaca Body (Early Rejection):** Validasi token diimplementasikan di level middleware HTTP sebelum FastAPI mem-parsing payload multipart. Request tanpa token ditolak seketika sehingga server tidak membuang CPU dan I/O untuk memproses file besar dari penyerang.
 - **Timing-Attack Resistant:** Perbandingan token menggunakan `hmac.compare_digest` pada representasi byte UTF-8. Hal ini mencegah penyerang menebak token melalui analisis perbedaan waktu respon milidetik.
 - **Prinsip Fail-Closed:** Jika variabel `CEGAHSCAM_API_TOKEN` di server lupa diisi (string kosong), service tidak membuka akses publik, melainkan menolak semua request bisnis dengan HTTP 500 (`Konfigurasi token API belum diatur.`).
@@ -124,19 +124,17 @@ Service ini dirancang sebagai **layanan internal tertutup** yang hanya dapat dia
 
 ## 4. Panduan Operasional & Integrasi Aman
 
-### Untuk Tim Backend Node.js:
-1. Simpan nilai `CEGAHSCAM_API_TOKEN` di file `.env` milik backend Node.js.
-2. Jangan pernah membocorkan token ini ke frontend React atau repositori publik.
-3. Sertakan header pada setiap pemanggilan internal:
-   ```javascript
-   const response = await axios.post("http://ai-service:8000/api/v1/analyze/text", formData, {
-     headers: {
-       ...formData.getHeaders(),
-       "X-API-Token": process.env.CEGAHSCAM_API_TOKEN
-     },
-     timeout: 90000 // Timeout minimum 90 detik
-   });
+### Untuk Tim Backend Utama Aplikasi Web:
+1. Simpan nilai `CEGAHSCAM_API_TOKEN` di konfigurasi rahasia (environment variable atau secret manager) milik backend utama, apa pun teknologi yang dipilih.
+2. Jangan pernah membocorkan token ini ke frontend atau repositori publik.
+3. Sertakan header pada setiap pemanggilan internal, contoh dengan `curl`:
+   ```bash
+   curl -X POST http://<host-ai-service>:8000/api/v1/analyze/text \
+     -H "X-API-Token: <CEGAHSCAM_API_TOKEN>" \
+     -F "text_content=contoh pesan" \
+     --max-time 90
    ```
+   Atur timeout klien minimal 90 detik, dan jangan retry otomatis pada `408`/`502`.
 
 ### Untuk Pengujian Manual melalui Swagger UI (`/docs`):
 1. Buka browser pada URL Swagger: `http://127.0.0.1:8000/docs`.

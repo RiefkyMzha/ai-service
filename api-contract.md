@@ -1,6 +1,6 @@
 # API Contract — CegahScam AI Service
 
-Kontrak implementasi untuk microservice AI CegahScam. Dokumen ini adalah acuan teknis untuk backend Node.js/frontend.
+Kontrak implementasi untuk microservice AI CegahScam. Dokumen ini adalah acuan teknis untuk backend utama aplikasi web. Teknologi backend utama dan frontend belum ditetapkan; kontrak ini hanya bergantung pada HTTP REST.
 
 | Item | Nilai |
 |---|---|
@@ -14,9 +14,9 @@ Kontrak implementasi untuk microservice AI CegahScam. Dokumen ini adalah acuan t
 
 - Semua endpoint bisnis menerima `POST`. Hanya `GET /health` yang tersedia di luar prefix.
 - Respons sukses selalu `application/json`; tidak ada streaming.
-- Service ini **tidak** membuat PDF, tidak menyimpan riwayat, dan tidak menulis ke database. Itu tanggung jawab backend Node.js.
+- Service ini **tidak** membuat PDF, tidak menyimpan riwayat, dan tidak menulis ke database. Itu tanggung jawab backend utama aplikasi web.
 - **Autentikasi:** semua endpoint di bawah `/api/v1` wajib mengirim header `X-API-Token: <CEGAHSCAM_API_TOKEN>`. Token dicek sebelum body dibaca. Tanpa/salah token → `401`; token server belum dikonfigurasi → `500` (fail closed). `GET /health`, `/docs`, `/redoc`, dan `/openapi.json` tetap terbuka tanpa token.
-- Belum ada otorisasi per-pengguna, rate limit, maupun CORS. Jangan memanggil service ini langsung dari browser; akses melalui backend Node atau jaringan internal. Token hanya boleh disimpan di backend Node, bukan di frontend.
+- Belum ada otorisasi per-pengguna, rate limit, maupun CORS. Jangan memanggil service ini langsung dari browser; akses melalui backend utama aplikasi web atau jaringan internal. Token hanya boleh disimpan di backend utama, bukan di frontend.
 - Field opsional yang tidak diisi dikembalikan sebagai `null` (mis. `scam_type`, `official_contact`, `official_contact.whatsapp`).
 
 ### 1.1 Bentuk error

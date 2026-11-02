@@ -293,5 +293,5 @@ Aturan lengkap ada di [`api-contract.md` §4](api-contract.md); tabel di bawah a
 - Jawaban LLM tidak deterministik: skor dan redaksi `reasons` dapat berubah antar pemanggilan.
 - Latensi terukur ±4–24 detik, tergantung endpoint dan model; service berjalan satu proses.
 - `/analyze/phone` bergantung pada sesi GetContact di `app/data/gtc_credentials.json`; sesi kedaluwarsa → 502 sampai file diperbarui.
-- Service tidak menyimpan riwayat dan tidak membuat PDF; itu tanggung jawab backend Node.js.
+- Service tidak menyimpan riwayat dan tidak membuat PDF; itu tanggung jawab backend utama aplikasi web.
 - Semua respons di atas adalah hasil nyata dari container `cegahscam-ai` pada tanggal pengujian, bukan contoh rekaan.

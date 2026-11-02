@@ -1,12 +1,12 @@
 # CegahScam AI Service
 
-Microservice FastAPI yang menganalisis indikasi penipuan (teks, gambar, nomor telepon) dan menyusun draf penanganan darurat. Service ini **hanya mengembalikan JSON**; pembuatan PDF dan penyimpanan riwayat dilakukan backend Node.js.
+Microservice FastAPI yang menganalisis indikasi penipuan (teks, gambar, nomor telepon) dan menyusun draf penanganan darurat. Service ini **hanya mengembalikan JSON**; pembuatan PDF dan penyimpanan riwayat menjadi tanggung jawab backend utama aplikasi web.
 
 ## Setup
 
 ```powershell
-git clone <url-repo> cegahscam-ai
-cd cegahscam-ai
+git clone <url-repo> ai-service
+cd ai service
 python -m venv venv
 venv\Scripts\pip.exe install -r requirements.txt
 copy .env.example .env      # isi OPENROUTER_API_KEY dan CEGAHSCAM_API_TOKEN
@@ -33,7 +33,7 @@ venv\Scripts\python.exe -m uvicorn app.main:app --reload
 |---|---|---|
 | `OPENROUTER_API_KEY` | `.env` (contoh di `.env.example`) | Wajib; kalau kosong semua endpoint analisis → 500 |
 | `LOG_LEVEL` | `.env` | `DEBUG`/`INFO`/`WARNING`/`ERROR`, default `INFO` |
-| `CEGAHSCAM_API_TOKEN` | `.env` (contoh di `.env.example`) | Wajib; token rahasia antar-service, dikirim backend Node lewat header `X-API-Token`. Di Swagger (`/docs`), masukkan via tombol hijau **Authorize**. Kosong → semua `/api/v1` ditolak (500). `/health` tetap terbuka |
+| `CEGAHSCAM_API_TOKEN` | `.env` (contoh di `.env.example`) | Wajib; token rahasia antar-service, dikirim backend utama aplikasi web lewat header `X-API-Token`. Di Swagger (`/docs`), masukkan via tombol hijau **Authorize**. Kosong → semua `/api/v1` ditolak (500). `/health` tetap terbuka |
 | Kredensial GetContact | `app/data/gtc_credentials.json` | Hanya untuk `/analyze/phone`; tidak bisa di-override env |
 | Whitelist call center | `app/data/Bank_Call_Senter_Final.json` | 100 entri `{name, call, aliases?}` |
 
