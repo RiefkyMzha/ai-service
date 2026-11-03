@@ -12,9 +12,19 @@ venv\Scripts\pip.exe install -r requirements.txt
 copy .env.example .env      # isi OPENROUTER_API_KEY dan CEGAHSCAM_API_TOKEN
 ```
 
-Lalu:
+Lalu pilih salah satu mode di `.env`:
 
-1. Isi `OPENROUTER_API_KEY` dan `CEGAHSCAM_API_TOKEN` di `.env` (ambil dari OpenRouter dan buat token acak).
+### Opsi A: Mode Mock (Untuk Integrasi Tim Web — Tanpa Kuota & Tanpa Kredensial Eksternal)
+Cocok untuk menguji integrasi backend utama dan frontend tanpa memerlukan `OPENROUTER_API_KEY` maupun `gtc_credentials.json`:
+```env
+OPENROUTER_API_KEY=
+CEGAHSCAM_API_TOKEN=token-rahasia-lokal-12345
+LOG_LEVEL=INFO
+MOCK_MODE=true
+```
+
+### Opsi B: Mode Live (Koneksi Penuh ke OpenRouter & GetContact)
+1. Set `MOCK_MODE=false` di `.env`, lalu isi `OPENROUTER_API_KEY` dan `CEGAHSCAM_API_TOKEN`.
 2. Minta `app/data/gtc_credentials.json` ke maintainer lewat jalur aman. File ini **tidak** ada di repo karena berisi token sesi GetContact; tanpa file ini semua endpoint selain `/analyze/phone` tetap berjalan normal.
 
 ## Menjalankan
