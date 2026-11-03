@@ -258,14 +258,14 @@ Jalur `408`/`500`/`502` belum diuji lewat HTTP karena butuh kondisi khusus (API 
 
 ## 6. Pengujian otomatis
 
-Perintah: `venv\Scripts\python.exe -m pytest` → **61 passed**.
+Perintah: `venv\Scripts\python.exe -m pytest` → **64 passed**.
 
 | File | Fokus |
 |---|---|
-| `tests/test_data_loader.py` | Ranking alias bank, URL/karakter khusus, `aliases` manual, data hilang |
+| `tests/test_data_loader.py` | Ranking alias bank, URL/karakter khusus, `aliases` manual, data hilang, pencocokan `knowledge_base_cegahscam.json` (`min_keywords=3`) |
 | `tests/test_ai_service.py` | API key kosong, timeout, 401, JSON cacat, MIME/ukuran gambar, override kontak |
 | `tests/test_phone_service.py` | Kredensial hilang/rusak/tidak lengkap, sesi GetContact 401, enrichment kontak |
-| `tests/test_routes.py` | 5 endpoint sukses, 422/400/413, kontak per endpoint, kontak palsu ditimpa |
+| `tests/test_routes.py` | 5 endpoint sukses, 422/400/413, kontak per endpoint, kontak palsu ditimpa, simulasi `MOCK_MODE=True` |
 | `tests/test_auth.py` | Autentikasi X-API-Token, 401 tanpa/salah token, fail-closed 500 jika token belum diatur, healthcheck terbuka |
 
 Semua akses jaringan di-mock (`AIService._call_openrouter`, `PhoneService._gtc_call`), sehingga test dapat dijalankan offline.
@@ -295,3 +295,45 @@ Aturan lengkap ada di [`api-contract.md` §4](api-contract.md); tabel di bawah a
 - `/analyze/phone` bergantung pada sesi GetContact di `app/data/gtc_credentials.json`; sesi kedaluwarsa → 502 sampai file diperbarui.
 - Service tidak menyimpan riwayat dan tidak membuat PDF; itu tanggung jawab backend utama aplikasi web.
 - Semua respons di atas adalah hasil nyata dari container `cegahscam-ai` pada tanggal pengujian, bukan contoh rekaan.
+
+## 9. Evaluasi Kualitas Deteksi & Eksperimen Optimasi (Fase 2)
+
+Dieksekusi pada **2026-11-03** menggunakan skrip [`eval/evaluate_phase2.py`](eval/evaluate_phase2.py) terhadap sampel berstrata (*stratified sample*, `seed=42`, $N=25$ baris mewakili seluruh 11 kategori dari 1.164 baris dataset master) melalui pemanggilan langsung ke OpenRouter (`nvidia/nemotron-3.5-super-vl:free`).
+
+### 9.1 Desain Eksperimen: Baseline vs Optimasi Knowledge Base (`min_keywords=3`)
+- **Baseline (`use_knowledge_base=False`):** Analisis murni mengandalkan `REASONING_PROMPT`.
+- **Optimasi (`use_knowledge_base=True`, `min_keywords=3`):** Menyuntikkan referensi `kategori_pola` dan `sop_mitigasi` dari [`app/data/knowledge_base_cegahscam.json`](app/data/knowledge_base_cegahscam.json) ke instruksi sistem apabila teks pesan mencocokkan **minimal 3 kata kunci** unik pada suatu kategori scam (mengabaikan kategori `"Bukan Scam"`).
+- **Validasi Presisi Aturan Kata Kunci pada Dataset Penuh (1.164 baris):** Aturan `min_keywords=3` mencocokkan 66 baris pada dataset penuh yang seluruhnya berlabel Scam (`1`) dan **0 baris Normal (`0`)** (0% *false trigger*).
+
+### 9.2 Hasil Metrik Kuantitatif
+
+ Evaluasi dihitung pada dua skenario ambang sesuai karakteristik dataset:
+- **Skenario A (Strict, $N=25$):** Seluruh baris berlabel `1` (termasuk *Spam Tidak Terklasifikasi* dan *Promo Provider*) dihitung sebagai Scam.
+- **Skenario B (Fraud-Only, $N=21$):** Mengecualikan 4 baris *Spam/Promo* komersial agar mengukur murni kinerja deteksi penipuan/kejahatan siber.
+
+#### Ambang Skor Risiko $\ge 40$ (Kategori Sedang–Sangat Tinggi)
+| Skenario | Konfigurasi | TP | FP | TN | FN | Precision | Recall | F1-Score | Accuracy |
+|---|---|---|---|---|---|---|---|---|---|
+| **Skenario A (Strict)** | Baseline | 13 | 0 | 7 | 5 | **100,00%** | 72,22% | 83,87% | 80,00% |
+| **Skenario A (Strict)** | **Optimasi KB (`min=3`)** | **14** | **0** | **7** | **4** | **100,00%** | **77,78%** | **87,50%** | **84,00%** |
+| **Skenario B (Fraud-Only)** | Baseline | 11 | 0 | 7 | 3 | **100,00%** | 78,57% | 88,00% | 85,71% |
+| **Skenario B (Fraud-Only)** | **Optimasi KB (`min=3`)** | **12** | **0** | **7** | **2** | **100,00%** | **85,71%** | **92,31%** | **90,48%** |
+
+#### Ambang Skor Risiko $\ge 50$ & $\ge 60$ (Kategori Tinggi–Sangat Tinggi)
+| Skenario | Konfigurasi | TP | FP | TN | FN | Precision | Recall | F1-Score | Accuracy |
+|---|---|---|---|---|---|---|---|---|---|
+| **Skenario A (Strict)** | Baseline | 12 | 0 | 7 | 6 | **100,00%** | 66,67% | 80,00% | 76,00% |
+| **Skenario A (Strict)** | **Optimasi KB (`min=3`)** | **13** | **0** | **7** | **5** | **100,00%** | **72,22%** | **83,87%** | **80,00%** |
+| **Skenario B (Fraud-Only)** | Baseline | 10 | 0 | 7 | 4 | **100,00%** | 71,43% | 83,33% | 80,95% |
+| **Skenario B (Fraud-Only)** | **Optimasi KB (`min=3`)** | **11** | **0** | **7** | **3** | **100,00%** | **78,57%** | **88,00%** | **85,71%** |
+
+### 9.3 Analisis Dampak Optimasi, False Negative, & Latensi
+1. **Zero False Positive (Precision 100%):** Seluruh 7 pesan percakapan normal memperoleh `risk_score` 5–10 (`Rendah`). Tidak ada percakapan normal yang salah dituduh sebagai penipuan.
+2. **Dampak Nyata Optimasi Knowledge Base (`min_keywords=3`):**
+   - Pada kasus *Modus Penipuan Transfer Uang* (Row 892: instruksi transfer singkat ke rekening BNI tanpa tautan phishing), model **Baseline** hanya memberikan `risk_score: 30` (*False Negative*). Setelah **Optimasi KB** menyuntikkan pola kecocokan 3 kata kunci (`bni`, `rekening`, `transfer`), skor naik menjadi **`risk_score: 65` (`Tinggi`)** (*True Positive*) beserta rekomendasi verifikasi telepon langsung sesuai SOP.
+   - Skor keyakinan pada *Penawaran Pinjol Ilegal* (Row 32) meningkat dari `70` menjadi `80` (`Sangat Tinggi`), dan pada *Undian Palsu* (Row 749) meningkat dari `80` menjadi `90`.
+3. **Analisis Sisa False Negative (FN):**
+   - **2 baris Spam Komersial (Row 566 & Row 977):** Berisi promo diskon restoran lawas dan penawaran NSP operator tanpa unsur pencurian data/uang (`risk_score` 10 dan 25).
+   - **2 baris Instruksi Transfer Sangat Pendek (Row 119 & Row 932):** Hanya memuat kalimat singkat nomor rekening Bank Mandiri tanpa konteks percakapan sebelumnya (`risk_score` 15 dan 30). Karena guardrail anti-halusinasi melarang LLM mengarang konteks, skor dijaga rendah–sedang namun sistem tetap berhasil mengekstrak `official_contact` Bank Mandiri (`14000`) dan menyarankan verifikasi identitas penerima.
+4. **Latensi Model:**
+   - Median (*p50*) latensi Baseline: **14,00 detik** (rata-rata *mean*: **19,91 detik**; rata-rata pada baris dengan injeksi KB: **29,45 detik** karena fluktuasi antrean tier gratis OpenRouter). Menegaskan pentingnya syarat timeout klien backend utama $\ge 90$ detik.

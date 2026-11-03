@@ -31,11 +31,13 @@ venv\Scripts\python.exe -m uvicorn app.main:app --reload
 
 | Kebutuhan | Lokasi | Catatan |
 |---|---|---|
-| `OPENROUTER_API_KEY` | `.env` (contoh di `.env.example`) | Wajib; kalau kosong semua endpoint analisis → 500 |
+| `OPENROUTER_API_KEY` | `.env` (contoh di `.env.example`) | Wajib pada Mode Live (`MOCK_MODE=false`); kalau kosong semua endpoint analisis → 500 |
 | `LOG_LEVEL` | `.env` | `DEBUG`/`INFO`/`WARNING`/`ERROR`, default `INFO` |
 | `CEGAHSCAM_API_TOKEN` | `.env` (contoh di `.env.example`) | Wajib; token rahasia antar-service, dikirim backend utama aplikasi web lewat header `X-API-Token`. Di Swagger (`/docs`), masukkan via tombol hijau **Authorize**. Kosong → semua `/api/v1` ditolak (500). `/health` tetap terbuka |
-| Kredensial GetContact | `app/data/gtc_credentials.json` | Hanya untuk `/analyze/phone`; tidak bisa di-override env |
+| `MOCK_MODE` | `.env` (contoh di `.env.example`) | Opsional (`true`/`false`, default `false`). Bila `true`, server mengembalikan respons simulasi sesuai kontrak (< 50 ms) tanpa memanggil OpenRouter/GetContact dan tanpa memerlukan `OPENROUTER_API_KEY` maupun `gtc_credentials.json` |
+| Kredensial GetContact | `app/data/gtc_credentials.json` | Hanya untuk `/analyze/phone` pada Mode Live; tidak bisa di-override env |
 | Whitelist call center | `app/data/Bank_Call_Senter_Final.json` | 100 entri `{name, call, aliases?}` |
+| Knowledge base scam | `app/data/knowledge_base_cegahscam.json` | Basis pengetahuan pola kata kunci & SOP mitigasi (aktif otomatis bila cocok $\ge 3$ kata kunci) |
 
 Model dan URL OpenRouter di-hardcode di `app/services/ai_service.py`, bukan lewat env.
 
@@ -52,7 +54,7 @@ Semua endpoint bisnis di bawah `/api/v1` wajib menyertakan header `X-API-Token`.
 | POST | `/api/v1/emergency/data-breach` | `multipart/form-data` | `X-API-Token` |
 | GET | `/health` | — | Bebas |
 
-Kontrak implementasi lengkap (field, batasan, contoh request, kontrak error): [`api-contract.md`](api-contract.md). Bukti pengujian input/output nyata: [`PENGUJIAN.md`](PENGUJIAN.md).
+Kontrak implementasi lengkap (field, batasan, contoh request, kontrak error): [`api-contract.md`](api-contract.md). Panduan integrasi untuk tim web & opsi teknologi: [`PANDUAN_INTEGRASI.md`](PANDUAN_INTEGRASI.md). Bukti pengujian & evaluasi metrik Fase 2: [`PENGUJIAN.md`](PENGUJIAN.md). Dokumentasi peran & siklus hidup MLOps: [`dokumentasi.md`](dokumentasi.md).
 
 ## Kebijakan `official_contact`
 
@@ -80,7 +82,7 @@ venv\Scripts\pip.exe install -r requirements-dev.txt
 venv\Scripts\python.exe -m pytest
 ```
 
-Harapan: **61 passed**. Semua akses jaringan di-mock (`OpenRouter` dan `GetContact`), jadi test bisa dijalankan offline.
+Harapan: **64 passed**. Semua akses jaringan di-mock (`OpenRouter` dan `GetContact`), jadi test bisa dijalankan offline.
 
 ## Struktur proyek
 
@@ -89,17 +91,18 @@ app/
   main.py            # entrypoint FastAPI + logging
   api/routes.py      # 5 endpoint bisnis + dependency factory
   core/
-    config.py        # Settings (.env)
-    data_loader.py   # whitelist bank + ranking alias
+    config.py        # Settings (.env, termasuk MOCK_MODE)
+    data_loader.py   # whitelist bank + indeks knowledge base (min_keywords=3)
     normalization.py # label LLM -> Bahasa Indonesia
     prompts.py       # prompt Vision/Reasoning/Emergency + guardrails
     security.py      # middleware & schema auth X-API-Token
   schemas/payload.py # response model + validasi nomor telepon
   services/
-    ai_service.py    # OpenRouter (threadpool), chunked streaming gambar
-    phone_service.py # GetContact (threadpool) + enrichment
+    ai_service.py    # OpenRouter (threadpool), KB injection, chunked streaming gambar, MOCK_MODE
+    phone_service.py # GetContact (threadpool) + enrichment + MOCK_MODE
   data/              # JSON bank, knowledge base, kredensial (lokal)
-tests/               # 61 test, tanpa jaringan (unit, route, auth, log, stream)
+tests/               # 64 test, tanpa jaringan (unit, route, auth, log, stream, KB, mock mode)
+eval/                # skrip evaluasi Fase 2 (evaluate_phase2.py); eval/data/ di-ignore Git/Docker
 ```
 
 ## Pemetaan error

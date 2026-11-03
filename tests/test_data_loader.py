@@ -80,3 +80,20 @@ def test_missing_data_files_do_not_crash(tmp_path):
     loader = DataLoader(data_dir=tmp_path)
     assert loader.bank_contacts == []
     assert loader.match_bank("bca") is None
+
+
+def test_match_knowledge_base_requires_min_three_keywords(loader: DataLoader):
+    assert loader.match_knowledge_base("Selamat anda dapat hadiah", min_keywords=3) == []
+    matches = loader.match_knowledge_base(
+        "Selamat anda pemenang hadiah undian resmi", min_keywords=3
+    )
+    assert len(matches) >= 1
+    assert matches[0]["kategori_pola"] == "Undian Palsu (Fake Reward)"
+    assert len(matches[0]["matched_keywords"]) >= 3
+
+
+def test_match_knowledge_base_ignores_normal_category(loader: DataLoader):
+    matches = loader.match_knowledge_base(
+        "Kita ngobrol biasa saja untuk bagi info", min_keywords=3
+    )
+    assert matches == []

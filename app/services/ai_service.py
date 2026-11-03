@@ -124,6 +124,7 @@ class AIService:
         self,
         user_text: str,
         image: UploadFile | None,
+        use_knowledge_base: bool = True,
     ) -> dict[str, Any]:
         image_url = await self._process_image_to_base64(image)
 
@@ -132,6 +133,44 @@ class AIService:
             if image_url
             else REASONING_PROMPT
         )
+
+        kb_matches: list[dict[str, Any]] = []
+        if use_knowledge_base and user_text and hasattr(self.data_loader, "match_knowledge_base"):
+            matched = self.data_loader.match_knowledge_base(user_text, min_keywords=3)
+            if isinstance(matched, list):
+                kb_matches = [m for m in matched if isinstance(m, dict) and m.get("kategori_pola")]
+            if kb_matches:
+                kb_lines = "\n".join(
+                    f"- Pola: {m['kategori_pola']} (kata kunci cocok: {', '.join(m['matched_keywords'])}) | SOP Mitigasi: {m['sop_mitigasi']}"
+                    for m in kb_matches
+                )
+                if kb_lines:
+                    system_instruction = (
+                        f"{system_instruction}\n\n"
+                        f"LOCAL KNOWLEDGE BASE HINTS (matched >= 3 scam keywords; use as reference for risk scoring, reasons, and recommendations if consistent with context):\n"
+                        f"{kb_lines}"
+                    )
+
+        if settings.MOCK_MODE:
+            top_kb = kb_matches[0] if kb_matches else None
+            mock_result: dict[str, Any] = {
+                "risk_score": 85 if top_kb else 75,
+                "risk_category": "Sangat Tinggi" if top_kb else "Tinggi",
+                "scam_type": top_kb["kategori_pola"] if top_kb else "Phishing / Smishing / Vishing",
+                "reasons": [
+                    "[MOCK MODE] Pesan dianalisis menggunakan mode simulasi integrasi.",
+                    "Terdeteksi pola mencurigakan pada bukti yang dikirimkan.",
+                ],
+                "recommendations": [
+                    top_kb["sop_mitigasi"]
+                    if top_kb and top_kb.get("sop_mitigasi")
+                    else "Jangan klik tautan atau memberikan kode OTP/PIN kepada pihak tidak dikenal.",
+                    "Verifikasi informasi langsung melalui saluran resmi institusi terkait.",
+                ],
+            }
+            mock_result = normalize_analysis_result(mock_result)
+            mock_result["official_contact"] = self.data_loader.official_contact_for(user_text)
+            return mock_result
 
         user_content: list[dict[str, Any]] = [
             {
@@ -208,6 +247,32 @@ class AIService:
         ]
 
         logger.info("Memproses laporan darurat (%s)...", incident_type)
+
+        if settings.MOCK_MODE:
+            mock_emergency: dict[str, Any] = {
+                "ai_kronologi": (
+                    f"[MOCK MODE] Laporan darurat ({incident_type}) telah diterima.\n"
+                    f"{incident_text}"
+                ),
+                "langkah_penanganan": [
+                    {
+                        "title": "Hubungi Layanan Resmi / Bank Terkait",
+                        "description": "Segera lakukan pemblokiran rekening atau pengamanan akun melalui call center resmi.",
+                    },
+                    {
+                        "title": "Simpan Bukti Transaksi & Percakapan",
+                        "description": "Dokumentasikan seluruh tangkapan layar bukti percakapan dan mutasi untuk pelaporan resmi.",
+                    },
+                ],
+            }
+            mock_emergency = normalize_analysis_result(mock_emergency)
+            bank_hint = incident_data.get("bank_korban") if is_financial else None
+            mock_emergency["official_contact"] = (
+                self.data_loader.official_contact_for(str(bank_hint))
+                if bank_hint
+                else None
+            )
+            return mock_emergency
 
         raw_result = await self._call_openrouter(messages)
 

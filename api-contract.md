@@ -284,9 +284,11 @@ Contoh:
 
 ## 6. Catatan integrasi klien
 
-- **Timeout:** siapkan timeout ≥ 90 detik. Server memakai 25 detik untuk GetContact dan 60 detik untuk AI.
-- **Retry:** jangan retry otomatis pada `408`/`502`; setiap POST memanggil LLM berbayar dan bisa menggandakan biaya.
+- **Panduan integrasi lengkap:** lihat [`PANDUAN_INTEGRASI.md`](PANDUAN_INTEGRASI.md) untuk contoh pemanggilan dari backend utama aplikasi web dan panduan UI frontend aplikasi web.
+- **Mode Mock (`MOCK_MODE=true`):** saat mengembangkan dan menguji integrasi di lokal, backend utama dapat menyalakan `MOCK_MODE=true` di `.env` AI Service agar seluruh endpoint mengembalikan respons simulasi sesuai skema dalam < 50 ms tanpa memerlukan `OPENROUTER_API_KEY` maupun `gtc_credentials.json` (autentikasi `X-API-Token`, validasi input, dan `official_contact` tetap aktif 100%).
+- **Timeout:** siapkan timeout ≥ 90 detik pada Mode Live (`MOCK_MODE=false`). Server memakai 25 detik untuk GetContact dan 60 detik untuk AI.
+- **Retry:** jangan retry otomatis pada `408`/`502`; setiap POST memanggil LLM dan mengonsumsi kuota.
 - **Null handling:** perlakukan `scam_type`, `official_contact`, dan `official_contact.whatsapp` sebagai opsional.
 - **Non-determinisme:** skor dan redaksi dapat berbeda antar pemanggilan meski input sama.
 - **Idempotensi:** endpoint bukan idempotent; tidak ada cache atau penyimpanan hasil.
-- **Privasi:** gambar dan teks dikirim ke OpenRouter (pihak ketiga) untuk analisis.
+- **Privasi:** gambar dan teks dikirim ke OpenRouter (pihak ketiga) untuk analisis pada Mode Live.

@@ -131,3 +131,33 @@ def test_data_breach_emergency_has_no_contact(client, fake_openrouter):
 def test_financial_emergency_requires_evidence(client, fake_openrouter):
     response = client.post("/api/v1/emergency/financial", data=FINANCIAL_FORM)
     assert response.status_code == 422
+
+
+def test_mock_mode_endpoints_work_without_upstream(client, monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "MOCK_MODE", True)
+
+    res_text = client.post(
+        "/api/v1/analyze/text",
+        data={"text_content": "Selamat anda pemenang hadiah undian Bank BCA"},
+    )
+    assert res_text.status_code == 200
+    body_text = res_text.json()
+    assert body_text["risk_score"] == 85
+    assert body_text["official_contact"]["name"] == "Bank BCA (Bank Central Asia)"
+
+    res_phone = client.post(
+        "/api/v1/analyze/phone",
+        json={"phone_number": "081234567890"},
+    )
+    assert res_phone.status_code == 200
+    assert res_phone.json()["risk_score"] == 65
+
+    res_emg = client.post(
+        "/api/v1/emergency/financial",
+        data=FINANCIAL_FORM,
+        files={"bukti_transfer": ("bukti.png", make_png(), "image/png")},
+    )
+    assert res_emg.status_code == 200
+    assert res_emg.json()["official_contact"]["phone"] == "1500888"

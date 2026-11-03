@@ -12,6 +12,7 @@ from typing import Any, Tuple
 
 from fastapi import HTTPException
 from starlette.concurrency import run_in_threadpool
+from app.core.config import settings
 from app.core.normalization import normalize_analysis_result
 from app.services.ai_service import AIService
 
@@ -134,6 +135,24 @@ class PhoneService:
             normalized_phone = "+62" + normalized_phone[1:]
         elif normalized_phone.startswith("62"):
             normalized_phone = "+" + normalized_phone
+
+        if settings.MOCK_MODE:
+            logger.info("Simulasi MOCK_MODE pencarian nomor: %s", _mask_phone(normalized_phone))
+            mock_phone_result: dict[str, Any] = {
+                "risk_score": 65,
+                "risk_category": "Tinggi",
+                "scam_type": "Peniruan Identitas / Pengambilalihan Akun",
+                "reasons": [
+                    f"[MOCK MODE] Simulasi pemeriksaan reputasi untuk nomor {_mask_phone(normalized_phone)}.",
+                    "Nomor tidak terdaftar sebagai call center resmi institusi perbankan.",
+                ],
+                "recommendations": [
+                    "Jangan berikan kode OTP, PIN, atau password kepada penelepon.",
+                    "Blokir nomor apabila meminta transfer dana atau data rahasia.",
+                ],
+                "official_contact": None,
+            }
+            return normalize_analysis_result(mock_phone_result)
 
         cred = self._get_active_cred()
         payload = {

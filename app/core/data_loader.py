@@ -26,8 +26,10 @@ class DataLoader:
         self.bank_contacts: List[Dict[str, Any]] = []
         self.knowledge_base: List[Dict[str, Any]] = []
         self._bank_aliases: List[Tuple[re.Pattern[str], str, int, Dict[str, Any]]] = []
+        self._kb_index: List[Tuple[str, set[str], str]] = []
         self._load_data()
         self._build_bank_index()
+        self._build_kb_index()
 
     def _load_data(self) -> None:
         try:
@@ -175,3 +177,59 @@ class DataLoader:
     def find_bank_contact(self, bank_name: str) -> Dict[str, Any] | None:
         """Kompatibilitas: cari entri bank berdasarkan nama (case-insensitive)."""
         return self.match_bank(bank_name)
+
+    def _build_kb_index(self) -> None:
+        grouped_keywords: Dict[str, set[str]] = {}
+        grouped_sop: Dict[str, str] = {}
+        for item in self.knowledge_base:
+            if not isinstance(item, dict):
+                continue
+            category = str(item.get("kategori_pola") or "").strip()
+            if not category or category == "Bukan Scam (Percakapan Normal)":
+                continue
+            keywords = item.get("keywords_terkait") or []
+            if not isinstance(keywords, list):
+                continue
+            norm_kws = {
+                _normalize(str(kw))
+                for kw in keywords
+                if isinstance(kw, str) and _normalize(str(kw))
+            }
+            if not norm_kws:
+                continue
+            grouped_keywords.setdefault(category, set()).update(norm_kws)
+            sop = str(item.get("sop_mitigasi") or "").strip()
+            if sop and category not in grouped_sop:
+                grouped_sop[category] = sop
+
+        self._kb_index = [
+            (cat, kws, grouped_sop.get(cat, ""))
+            for cat, kws in grouped_keywords.items()
+        ]
+
+    def match_knowledge_base(
+        self,
+        text: str,
+        min_keywords: int = 3,
+    ) -> List[Dict[str, Any]]:
+        norm_text = _normalize(text)
+        if not norm_text:
+            return []
+        words = set(norm_text.split())
+        matches: List[Dict[str, Any]] = []
+        for category, kws, sop in self._kb_index:
+            matched = [
+                kw
+                for kw in kws
+                if (kw in words if " " not in kw else kw in norm_text)
+            ]
+            if len(matched) >= min_keywords:
+                matches.append(
+                    {
+                        "kategori_pola": category,
+                        "matched_keywords": sorted(matched),
+                        "sop_mitigasi": sop,
+                    }
+                )
+        matches.sort(key=lambda item: (-len(item["matched_keywords"]), item["kategori_pola"]))
+        return matches
