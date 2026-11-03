@@ -65,7 +65,7 @@ Semua endpoint bisnis di bawah `/api/v1` wajib menyertakan header `X-API-Token`.
 | POST | `/api/v1/emergency/data-breach` | `multipart/form-data` | `X-API-Token` |
 | GET | `/health` | — | Bebas |
 
-Kontrak implementasi lengkap (field, batasan, contoh request, kontrak error): [`api-contract.md`](api-contract.md). Panduan implementasi untuk tim web & opsi teknologi: [`panduan_implementasi.md`](panduan_implementasi.md). Bukti pengujian & evaluasi metrik Fase 2: [`PENGUJIAN.md`](PENGUJIAN.md). Dokumentasi peran & siklus hidup MLOps: [`dokumentasi.md`](dokumentasi.md).
+Kontrak implementasi lengkap (field, batasan, contoh request, kontrak error): [`api-contract.md`](api-contract.md). Panduan implementasi untuk tim web & opsi teknologi: [`panduan_implementasi.md`](panduan_implementasi.md). Bukti pengujian & evaluasi metrik Fase 2: [`PENGUJIAN.md`](PENGUJIAN.md).
 
 ## Kebijakan `official_contact`
 
