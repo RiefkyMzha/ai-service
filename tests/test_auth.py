@@ -67,11 +67,26 @@ def test_unconfigured_token_fails_closed_with_500(monkeypatch, fake_openrouter):
 
 def test_health_is_open_without_token(monkeypatch):
     monkeypatch.setattr(settings, "CEGAHSCAM_API_TOKEN", TEST_API_TOKEN)
+    monkeypatch.setattr(settings, "MOCK_MODE", True)
 
     with TestClient(app) as test_client:
         response = test_client.get("/health")
 
     assert response.status_code == 200
+    assert response.json()["mock_mode"] is True
+
+
+def test_cors_preflight_and_headers_on_protected_endpoint(raw_client: TestClient):
+    preflight = raw_client.options(
+        PROTECTED_URL,
+        headers={
+            "Origin": "https://cegahscam.example.com",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "X-API-Token, Content-Type",
+        },
+    )
+    assert preflight.status_code == 200
+    assert preflight.headers.get("access-control-allow-origin") == "*"
 
 
 @pytest.mark.parametrize(

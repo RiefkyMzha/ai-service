@@ -16,7 +16,7 @@ Kontrak implementasi untuk microservice AI CegahScam. Dokumen ini adalah acuan t
 - Respons sukses selalu `application/json`; tidak ada streaming.
 - Service ini **tidak** membuat PDF, tidak menyimpan riwayat, dan tidak menulis ke database. Itu tanggung jawab backend utama aplikasi web.
 - **Autentikasi:** semua endpoint di bawah `/api/v1` wajib mengirim header `X-API-Token: <CEGAHSCAM_API_TOKEN>`. Token dicek sebelum body dibaca. Tanpa/salah token → `401`; token server belum dikonfigurasi → `500` (fail closed). `GET /health`, `/docs`, `/redoc`, dan `/openapi.json` tetap terbuka tanpa token.
-- Belum ada otorisasi per-pengguna, rate limit, maupun CORS. Jangan memanggil service ini langsung dari browser; akses melalui backend utama aplikasi web atau jaringan internal. Token hanya boleh disimpan di backend utama, bukan di frontend.
+- **CORS:** `CORSMiddleware` aktif secara bawaan (`CORS_ORIGINS=*` di `.env`, dapat dibatasi ke domain tertentu). Untuk keamanan token pada produksi, pemanggilan melalui backend utama aplikasi web tetap paling direkomendasikan.
 - Field opsional yang tidak diisi dikembalikan sebagai `null` (mis. `scam_type`, `official_contact`, `official_contact.whatsapp`).
 
 ### 1.1 Bentuk error
@@ -245,10 +245,10 @@ Respons `200`: bentuk `EmergencyResponse`; `official_contact` selalu `null` untu
 ### 3.6 `GET /health`
 
 ```json
-{ "status": "ok", "message": "CegahScam AI Service is healthy" }
+{ "status": "ok", "message": "CegahScam AI Service is healthy", "mock_mode": false }
 ```
 
-Dipakai `HEALTHCHECK` Docker. Tidak mengecek dependensi eksternal.
+Dipakai untuk memantau status layanan dan mengetahui apakah server sedang berjalan dalam Mode Mock (`"mock_mode": true`) atau Mode Live (`"mock_mode": false`). Tidak mengecek dependensi eksternal.
 
 ## 4. Aturan `official_contact`
 
@@ -284,7 +284,7 @@ Contoh:
 
 ## 6. Catatan integrasi klien
 
-- **Panduan integrasi lengkap:** lihat [`PANDUAN_INTEGRASI.md`](PANDUAN_INTEGRASI.md) untuk contoh pemanggilan dari backend utama aplikasi web dan panduan UI frontend aplikasi web.
+- **Panduan implementasi tim web:** lihat [`panduan_implementasi.md`](panduan_implementasi.md) untuk arsitektur komunikasi dengan tim web dan kajian opsi teknologi web.
 - **Mode Mock (`MOCK_MODE=true`):** saat mengembangkan dan menguji integrasi di lokal, backend utama dapat menyalakan `MOCK_MODE=true` di `.env` AI Service agar seluruh endpoint mengembalikan respons simulasi sesuai skema dalam < 50 ms tanpa memerlukan `OPENROUTER_API_KEY` maupun `gtc_credentials.json` (autentikasi `X-API-Token`, validasi input, dan `official_contact` tetap aktif 100%).
 - **Timeout:** siapkan timeout ≥ 90 detik pada Mode Live (`MOCK_MODE=false`). Server memakai 25 detik untuk GetContact dan 60 detik untuk AI.
 - **Retry:** jangan retry otomatis pada `408`/`502`; setiap POST memanggil LLM dan mengonsumsi kuota.

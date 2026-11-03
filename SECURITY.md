@@ -49,10 +49,11 @@ Service ini dirancang sebagai **layanan internal tertutup** yang hanya dapat dia
               │
               ▼
    ┌────────────────────────────────────────────────────────┐
-   │ 5. LAYER ISOLASI CONTAINER & INFRASTRUKTUR             │
-   │    • User non-root (appuser, UID 10001)                │
-   │    • .env & gtc_credentials.json tidak ada di image    │
-   │    • Dataset riset XLSX dieksklusikan dari image Docker│
+   │ 5. LAYER ISOLASI SERVER & INFRASTRUKTUR                │
+   │    • Uvicorn terikat lokal (127.0.0.1:8000) di balik   │
+   │      Nginx Reverse Proxy + Certbot HTTPS               │
+   │    • .env & gtc_credentials.json diisolasi dari Git    │
+   │      dan dikunci dengan chmod 600                      │
    │    • Non-blocking threadpool menjaga /health aktif     │
    └────────────────────────────────────────────────────────┘
 ```
@@ -66,7 +67,7 @@ Service ini dirancang sebagai **layanan internal tertutup** yang hanya dapat dia
 - **Pemeriksaan Sebelum Membaca Body (Early Rejection):** Validasi token diimplementasikan di level middleware HTTP sebelum FastAPI mem-parsing payload multipart. Request tanpa token ditolak seketika sehingga server tidak membuang CPU dan I/O untuk memproses file besar dari penyerang.
 - **Timing-Attack Resistant:** Perbandingan token menggunakan `hmac.compare_digest` pada representasi byte UTF-8. Hal ini mencegah penyerang menebak token melalui analisis perbedaan waktu respon milidetik.
 - **Prinsip Fail-Closed:** Jika variabel `CEGAHSCAM_API_TOKEN` di server lupa diisi (string kosong), service tidak membuka akses publik, melainkan menolak semua request bisnis dengan HTTP 500 (`Konfigurasi token API belum diatur.`).
-- **Pengecualian Healthcheck:** Endpoint `GET /health` tetap terbuka tanpa token khusus untuk kebutuhan healthcheck berkala Docker engine dan load balancer.
+- **Pengecualian Healthcheck:** Endpoint `GET /health` tetap terbuka tanpa token khusus untuk kebutuhan pemantauan ketersediaan layanan.
 
 ### Layer 2: Perlindungan Sumber Daya & Pencegahan DoS
 - **Streaming / Chunked File Reading:** Fungsi pemrosesan file gambar bukti membaca data secara bertahap dalam potongan (*chunks*) 1 MB. Jika akumulasi byte melewati batas 15 MB, pembacaan langsung dihentikan (*early abort*) dan melempar `HTTP 413 Payload Too Large` tanpa memuat seluruh file ke memori RAM.
@@ -95,13 +96,10 @@ Service ini dirancang sebagai **layanan internal tertutup** yang hanya dapat dia
 - **Sanitasi Pesan Error & Output LLM:** Respon mentah dari LLM (yang berpotensi memuat nama korban, nomor rekening, dan detail finansial) tidak dicetak ke file log saat terjadi kegagalan parsing JSON, melainkan hanya mencatat panjang karakter output.
 - **Penyembunyian Detail Error Eksternal:** Exception mentah dari GetContact disaring sehingga potongan URL privat atau parameter sesi tidak tercatat di file log.
 
-### Layer 5: Isolasi Container & Manajemen Secret
-- **Non-Root Execution:** Image Docker dijalankan di bawah user dengan hak terbatas: `appuser` (UID 10001, GID 10001). Jika terjadi celah eksekusi kode pada library pihak ketiga, penyerang tidak memiliki akses root ke host container.
-- **Pencegahan Kebocoran Secret ke Image:** File rahasia (`.env`, `gtc_credentials.json`) dieksklusikan dari build context melalui `.dockerignore`. Token GetContact hanya boleh dipasang via volume mount *read-only* saat runtime:
-  ```powershell
-  -v "${PWD}\app\data\gtc_credentials.json:/app/app/data/gtc_credentials.json:ro"
-  ```
-- **Pemisahan Dataset:** Dataset master internal (`.xlsx`) dilarang masuk ke image produksi dan dipisahkan ke direktori `eval/` yang diabaikan oleh Git dan Docker.
+### Layer 5: Isolasi Server & Manajemen Secret
+- **Isolasi Port Lokal (`127.0.0.1:8000`) & Non-Root Service:** Pada server VPS, service `systemd` dijalankan di bawah user non-root (`www-data`) dan hanya mendengarkan pada `127.0.0.1:8000` di belakang Nginx Reverse Proxy + Certbot HTTPS.
+- **Perlindungan File Rahasia:** File rahasia (`.env`, `gtc_credentials.json`) dieksklusikan dari Git melalui `.gitignore` dan dikunci izin aksesnya di server dengan `chmod 600`.
+- **Pemisahan Dataset:** Dataset master internal (`.xlsx`) dipisahkan ke direktori `eval/data/` yang diabaikan oleh Git.
 - **Pemindaian Kerentanan (Vulnerability Audit):** Seluruh dependensi produksi telah dipindai dengan `pip-audit` dan terverifikasi **0 kerentanan (No known vulnerabilities found)**.
 
 ### Layer 6: Stabilitas Concurrency & Event-Loop
@@ -137,7 +135,7 @@ Service ini dirancang sebagai **layanan internal tertutup** yang hanya dapat dia
      --max-time 90
    ```
    Atur timeout klien minimal 90 detik, dan jangan retry otomatis pada `408`/`502`.
-4. Untuk pengembangan dan pengujian lokal tanpa mendistribusikan `OPENROUTER_API_KEY` atau `gtc_credentials.json` ke laptop pengembang web, gunakan `MOCK_MODE=true` di `.env` (lihat [`PANDUAN_INTEGRASI.md`](PANDUAN_INTEGRASI.md)).
+4. Untuk pengembangan dan pengujian integrasi tanpa menghabiskan kuota `OPENROUTER_API_KEY` atau `gtc_credentials.json`, gunakan `MOCK_MODE=true` (lihat [`panduan_implementasi.md`](panduan_implementasi.md)).
 
 ### Untuk Pengujian Manual melalui Swagger UI (`/docs`):
 1. Buka browser pada URL Swagger: `http://127.0.0.1:8000/docs`.
@@ -150,6 +148,5 @@ Service ini dirancang sebagai **layanan internal tertutup** yang hanya dapat dia
 ## 5. Bukti Verifikasi Otomatis
 
 Seluruh layer pertahanan di atas diuji secara otomatis dan terverifikasi dalam test suite:
-- **Total Test:** 64 kasus uji passed ([`tests/test_auth.py`](tests/test_auth.py), [`tests/test_ai_service.py`](tests/test_ai_service.py), [`tests/test_phone_service.py`](tests/test_phone_service.py), [`tests/test_data_loader.py`](tests/test_data_loader.py), [`tests/test_routes.py`](tests/test_routes.py))
+- **Total Test:** 65 kasus uji passed ([`tests/test_auth.py`](tests/test_auth.py), [`tests/test_ai_service.py`](tests/test_ai_service.py), [`tests/test_phone_service.py`](tests/test_phone_service.py), [`tests/test_data_loader.py`](tests/test_data_loader.py), [`tests/test_routes.py`](tests/test_routes.py))
 - **Audit Dependensi:** `pip-audit` $\rightarrow$ 0 vulnerabilities
-- **Audit Container:** Container terisolasi dengan user non-root UID 10001, tanpa file rahasia di dalam image.

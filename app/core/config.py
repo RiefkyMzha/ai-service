@@ -11,5 +11,6 @@ class Settings(BaseSettings):
 
     CEGAHSCAM_API_TOKEN: str = ""
     MOCK_MODE: bool = False
+    CORS_ORIGINS: str = "*"
 
 settings = Settings()

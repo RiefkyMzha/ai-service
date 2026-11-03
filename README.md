@@ -45,6 +45,7 @@ venv\Scripts\python.exe -m uvicorn app.main:app --reload
 | `LOG_LEVEL` | `.env` | `DEBUG`/`INFO`/`WARNING`/`ERROR`, default `INFO` |
 | `CEGAHSCAM_API_TOKEN` | `.env` (contoh di `.env.example`) | Wajib; token rahasia antar-service, dikirim backend utama aplikasi web lewat header `X-API-Token`. Di Swagger (`/docs`), masukkan via tombol hijau **Authorize**. Kosong → semua `/api/v1` ditolak (500). `/health` tetap terbuka |
 | `MOCK_MODE` | `.env` (contoh di `.env.example`) | Opsional (`true`/`false`, default `false`). Bila `true`, server mengembalikan respons simulasi sesuai kontrak (< 50 ms) tanpa memanggil OpenRouter/GetContact dan tanpa memerlukan `OPENROUTER_API_KEY` maupun `gtc_credentials.json` |
+| `CORS_ORIGINS` | `.env` (contoh di `.env.example`) | Opsional (default `*`). Daftar origin CORS dipisahkan koma agar endpoint dapat dipanggil dari frontend browser maupun backend utama aplikasi web |
 | Kredensial GetContact | `app/data/gtc_credentials.json` | Hanya untuk `/analyze/phone` pada Mode Live; tidak bisa di-override env |
 | Whitelist call center | `app/data/Bank_Call_Senter_Final.json` | 100 entri `{name, call, aliases?}` |
 | Knowledge base scam | `app/data/knowledge_base_cegahscam.json` | Basis pengetahuan pola kata kunci & SOP mitigasi (aktif otomatis bila cocok $\ge 3$ kata kunci) |
@@ -64,7 +65,7 @@ Semua endpoint bisnis di bawah `/api/v1` wajib menyertakan header `X-API-Token`.
 | POST | `/api/v1/emergency/data-breach` | `multipart/form-data` | `X-API-Token` |
 | GET | `/health` | — | Bebas |
 
-Kontrak implementasi lengkap (field, batasan, contoh request, kontrak error): [`api-contract.md`](api-contract.md). Panduan integrasi untuk tim web & opsi teknologi: [`PANDUAN_INTEGRASI.md`](PANDUAN_INTEGRASI.md). Bukti pengujian & evaluasi metrik Fase 2: [`PENGUJIAN.md`](PENGUJIAN.md). Dokumentasi peran & siklus hidup MLOps: [`dokumentasi.md`](dokumentasi.md).
+Kontrak implementasi lengkap (field, batasan, contoh request, kontrak error): [`api-contract.md`](api-contract.md). Panduan implementasi untuk tim web & opsi teknologi: [`panduan_implementasi.md`](panduan_implementasi.md). Bukti pengujian & evaluasi metrik Fase 2: [`PENGUJIAN.md`](PENGUJIAN.md). Dokumentasi peran & siklus hidup MLOps: [`dokumentasi.md`](dokumentasi.md).
 
 ## Kebijakan `official_contact`
 
@@ -73,18 +74,6 @@ Kontrak implementasi lengkap (field, batasan, contoh request, kontrak error): [`
 - Bila beberapa bank terdeteksi, dipilih yang paling cocok (alias paling spesifik, lalu kemunculan paling awal): `bank mandiri` → **Bank Mandiri**, `mandiri taspen` → **Bank Mandiri Taspen**.
 - Nilai `official_contact` dari LLM selalu ditimpa; bank di luar whitelist menghasilkan `null`.
 
-## Docker
-
-```powershell
-docker build -t cegahscam-ai:latest .
-docker run -d --name cegahscam-ai -p 8000:8000 `
-  --env-file .env `
-  -v "${PWD}\app\data\gtc_credentials.json:/app/app/data/gtc_credentials.json:ro" `
-  cegahscam-ai:latest
-```
-
-Image memakai `python:3.12-slim`, `WORKDIR /app`, berjalan sebagai non-root user `appuser` (UID 10001) demi keamanan least-privilege, dan punya `HEALTHCHECK` ke `/health`. `.env` dan kredensial GetContact tidak masuk image. Env direkam saat container **dibuat**, jadi setelah mengubah `.env` container harus dibuat ulang (`docker rm -f cegahscam-ai` lalu `docker run` lagi), bukan sekadar `restart`.
-
 ## Test
 
 ```powershell
@@ -92,16 +81,16 @@ venv\Scripts\pip.exe install -r requirements-dev.txt
 venv\Scripts\python.exe -m pytest
 ```
 
-Harapan: **64 passed**. Semua akses jaringan di-mock (`OpenRouter` dan `GetContact`), jadi test bisa dijalankan offline.
+Harapan: **65 passed**. Semua akses jaringan di-mock (`OpenRouter` dan `GetContact`), jadi test bisa dijalankan offline.
 
 ## Struktur proyek
 
 ```
 app/
-  main.py            # entrypoint FastAPI + logging
+  main.py            # entrypoint FastAPI + logging + CORSMiddleware
   api/routes.py      # 5 endpoint bisnis + dependency factory
   core/
-    config.py        # Settings (.env, termasuk MOCK_MODE)
+    config.py        # Settings (.env, termasuk MOCK_MODE & CORS_ORIGINS)
     data_loader.py   # whitelist bank + indeks knowledge base (min_keywords=3)
     normalization.py # label LLM -> Bahasa Indonesia
     prompts.py       # prompt Vision/Reasoning/Emergency + guardrails
@@ -111,8 +100,8 @@ app/
     ai_service.py    # OpenRouter (threadpool), KB injection, chunked streaming gambar, MOCK_MODE
     phone_service.py # GetContact (threadpool) + enrichment + MOCK_MODE
   data/              # JSON bank, knowledge base, kredensial (lokal)
-tests/               # 64 test, tanpa jaringan (unit, route, auth, log, stream, KB, mock mode)
-eval/                # skrip evaluasi Fase 2 (evaluate_phase2.py); eval/data/ di-ignore Git/Docker
+tests/               # 65 test, tanpa jaringan (unit, route, auth, CORS, log, stream, KB, mock mode)
+eval/                # skrip evaluasi Fase 2 (evaluate_phase2.py); eval/data/ di-ignore Git
 ```
 
 ## Pemetaan error
@@ -133,17 +122,16 @@ eval/                # skrip evaluasi Fase 2 (evaluate_phase2.py); eval/data/ di
 |---|---|---|
 | `401 Token API tidak valid atau tidak ada.` | Header `X-API-Token` tidak disertakan atau salah | Sertakan header `X-API-Token: <token>` pada request, atau klik tombol **Authorize** di `/docs` |
 | `500 Konfigurasi token API belum diatur.` | `CEGAHSCAM_API_TOKEN` di `.env` kosong | Isi `CEGAHSCAM_API_TOKEN` di `.env` dengan token rahasia acak, lalu restart server |
-| `500 Konfigurasi API AI tidak valid.` | `OPENROUTER_API_KEY` kosong | isi `.env`, restart proses; untuk Docker, buat ulang container |
+| `500 Konfigurasi API AI tidak valid.` | `OPENROUTER_API_KEY` kosong | isi `.env`, lalu restart proses server |
 | `500 Konfigurasi GetContact ...` | `gtc_credentials.json` tidak ada/tidak lengkap | minta file ke maintainer, taruh di `app/data/` |
 | `502 Sesi GetContact tidak valid atau kedaluwarsa.` | token sesi kedaluwarsa | perbarui file kredensial (dibaca per request, tidak perlu restart) |
 | `ModuleNotFoundError: app` | CWD bukan root repo | `cd` ke root lalu jalankan ulang |
 | `.env` tidak terbaca / data JSON gagal dimuat | CWD bukan root repo | sama seperti di atas |
-| `Address already in use` di port 8000 | ada proses/container lain | `docker stop cegahscam-ai` atau hentikan proses lama |
-| Perubahan `.env` tidak berefek di Docker | env dibekukan saat create | `docker rm -f cegahscam-ai` lalu `docker run` ulang |
+| `Address already in use` di port 8000 | ada proses lain yang memakai port 8000 | hentikan proses lama atau gunakan `--port` lain |
 | `/docs` kosong di browser | aset Swagger dari CDN diblokir | gunakan `/redoc`, atau izinkan akses jsdelivr |
 
 ## Catatan operasional
 
-- Kredensial GetContact adalah snapshot sesi; tidak ada login/refresh otomatis. Jika muncul 502, perbarui `app/data/gtc_credentials.json` lalu buat ulang container (khusus Docker).
+- Kredensial GetContact adalah snapshot sesi; tidak ada login/refresh otomatis. Jika muncul 502, perbarui `app/data/gtc_credentials.json` (perubahan langsung aktif tanpa restart).
 - Pemanggilan HTTP keluar berjalan di threadpool sehingga event loop tidak tersandera, tetapi service tetap satu proses — latensi 4–24 detik per request adalah normal.
 - Service stateless: tidak menyimpan riwayat, tidak menulis database, tidak membuat PDF.

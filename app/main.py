@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
 from app.core.config import settings
 from app.core.security import api_key_header, require_api_token
@@ -18,7 +19,11 @@ app = FastAPI(
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    return {"status": "ok", "message": "CegahScam AI Service is healthy"}
+    return {
+        "status": "ok",
+        "message": "CegahScam AI Service is healthy",
+        "mock_mode": settings.MOCK_MODE,
+    }
 
 app.include_router(
     router,
@@ -27,3 +32,17 @@ app.include_router(
 )
 
 app.middleware("http")(require_api_token)
+
+cors_origins = [
+    origin.strip()
+    for origin in settings.CORS_ORIGINS.split(",")
+    if origin.strip()
+] or ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)

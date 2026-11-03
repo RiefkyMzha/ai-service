@@ -12,80 +12,66 @@ Sebagai **MLOps Engineer** sekaligus penanggung jawab DevOps untuk sistem kecerd
 
 | No | Area Jobdesk | Implementasi Nyata pada CegahScam AI Service |
 |---|---|---|
-| **1** | **Manajemen Deploy Model** | Membungkus layanan inferensi AI menggunakan **FastAPI (Python 3.12)** dan **Docker** (*non-root container* `appuser` UID 10001) dengan orkestrasi terpisah dari backend utama aplikasi web. |
+| **1** | **Manajemen Deploy Model** | Menyiapkan dan men-deploy layanan inferensi AI menggunakan **FastAPI (Python 3.12)** pada server **VPS Ubuntu** mandiri menggunakan **`.venv` + `systemd` + `Nginx Reverse Proxy` + `Certbot (HTTPS)`**. |
 | **2** | **Pemantauan Kinerja Model** | Membangun pipeline evaluasi kuantitatif (`eval/evaluate_phase2.py`) untuk mengukur *Precision*, *Recall*, *F1-Score*, *Accuracy*, *Confusion Matrix*, dan distribusi latensi (*mean*, *p50/median*, *max*). |
 | **3** | **Skalabilitas & Ketersediaan** | Menerapkan arsitektur *stateless* dan eksekusi *non-blocking I/O* (`run_in_threadpool`) pada pemanggilan eksternal (OpenRouter & GetContact) agar *event loop* dan endpoint `/health` tidak pernah membeku saat trafik padat. |
-| **4** | **Manajemen Versi Model** | Mengelola versi konfigurasi model LLM (`nvidia/nemotron-3.5-super-vl:free`), versi prompt sistem, versi basis pengetahuan statis via Git, serta skema *tagging* image Docker. |
-| **5** | **Keamanan (*Security*)** | Menerapkan autentikasi antar-layanan (*fail-closed* `X-API-Token` dengan `hmac.compare_digest`), penyamaran data pribadi/PII di log (`+6281*******90`), pembatasan streaming upload gambar (maksimal 15 MB per *chunk* 1 MB), pertahanan *anti-prompt injection* (`<untrusted_evidence>`), dan audit dependensi (**0 CVE** via `pip-audit`). |
-| **6** | **Monitoring & Debugging** | Menyediakan endpoint `/health` untuk *container healthcheck*, pencatatan log terstruktur yang aman dari kebocoran *raw payload*, dan pemetaan kode status HTTP yang presisi (`400`, `401`, `408`, `413`, `422`, `500`, `502`). |
+| **4** | **Manajemen Versi Model** | Mengelola versi konfigurasi model LLM (`nvidia/nemotron-3.5-super-vl:free`), versi prompt sistem, serta versi basis pengetahuan statis via Git. |
+| **5** | **Keamanan (*Security*)** | Menerapkan autentikasi (`X-API-Token` *fail-closed* dengan `hmac.compare_digest`), `CORSMiddleware` terkonfigurasi (`CORS_ORIGINS`), penyamaran data pribadi/PII di log (`+6281*******90`), pembatasan streaming upload gambar (maksimal 15 MB per *chunk* 1 MB), pertahanan *anti-prompt injection* (`<untrusted_evidence>`), dan audit dependensi (**0 CVE** via `pip-audit`). |
+| **6** | **Monitoring & Debugging** | Menyediakan endpoint `/health` (dilengkapi indikator status `mock_mode`), pencatatan log terstruktur via `journalctl` yang aman dari kebocoran *raw payload*, dan pemetaan kode status HTTP yang presisi (`400`, `401`, `408`, `413`, `422`, `500`, `502`). |
 | **7** | **Manajemen Data & Feature** | Mengelola indeks pencarian cepat di memori (*in-memory indexing*) untuk 2 aset data utama: whitelist kontak resmi bank (`Bank_Call_Senter_Final.json`) dan basis pengetahuan pola penipuan (`knowledge_base_cegahscam.json`). |
-| **8** | **Dependency & Integrasi** | Mengunci versi pustaka produksi di `requirements.txt` dan menyusun kontrak integrasi baku (`api-contract.md`) bagi **backend utama aplikasi web** dan **frontend aplikasi web**. |
-| **9** | **Kolaborasi Antar-Tim** | Menyediakan dokumentasi teknis lengkap (`README.md`, `api-contract.md`, `PENGUJIAN.md`, `SECURITY.md`, `CONTEXT.md`, serta Swagger UI `/docs`) agar tim pengembang web dapat berintegrasi tanpa hambatan. |
-| **10** | **Pengelolaan Sumber Daya** | Mengatur efisiensi kuota API eksternal (kuota pencarian GetContact 200/periode dan rate limit OpenRouter), menerapkan *stratified sampling* saat evaluasi, serta menjaga jejak memori (*RAM footprint*) kontainer tetap ringan. |
+| **8** | **Dependency & Integrasi** | Mengunci versi pustaka produksi di `requirements.txt`, mengaktifkan dukungan lintas domain (`CORSMiddleware`), dan menyusun kontrak integrasi baku (`api-contract.md`) agar dapat diakses secara online oleh **frontend aplikasi web** maupun **backend utama aplikasi web**. |
+| **9** | **Kolaborasi Antar-Tim** | Menyediakan dokumentasi teknis lengkap (`README.md`, `api-contract.md`, `panduan_implementasi.md`, `PENGUJIAN.md`, `SECURITY.md`, serta Swagger UI `/docs`) dan fitur **`MOCK_MODE`** agar tim web dapat menguji integrasi online tanpa khawatir kehabisan kuota API. |
+| **10** | **Pengelolaan Sumber Daya** | Mengatur strategi peralihan `MOCK_MODE=true` (saat testing integrasi) ke `MOCK_MODE=false` (saat live produksi) untuk menghemat kuota pencarian GetContact (200/periode) dan rate limit OpenRouter, serta menjaga penggunaan RAM di VPS tetap sangat ringan. |
 
 ---
 
-## 2. Arsitektur Integrasi & Prinsip *Stateless Microservice*
+## 2. Arsitektur Integrasi Online & Deployment VPS Mandiri (Metode A: `systemd` + `.venv` + Nginx + Certbot)
 
-Dalam ekosistem CegahScam, komponen sistem dipisahkan menjadi tiga lapis independen:
+Sesuai arahan arsitektur deployment proyek, **CegahScam AI Service** di-deploy pada server **VPS Ubuntu tersendiri** menggunakan subdomain HTTPS publik sehingga dapat diakses secara online oleh sistem web (baik dipanggil melalui **backend utama aplikasi web** maupun langsung dari **frontend aplikasi web**):
 
 ```
 +-------------------------------------------------------------------+
-|                      FRONTEND APLIKASI WEB                        |
-|        (Antarmuka pengguna untuk cek teks, gambar, nomor,         |
-|                     dan pelaporan darurat)                        |
+|            TIM WEB (FRONTEND / BACKEND UTAMA APLIKASI WEB)        |
+|  - Memanggil endpoint https://ai.<domain>/api/v1/...              |
+|  - Menyertakan Header X-API-Token                                 |
 +---------------------------------+---------------------------------+
-                                  | HTTP / REST
+                                  | HTTPS (Port 443, Terenkripsi TLS)
                                   v
 +-------------------------------------------------------------------+
-|                   BACKEND UTAMA APLIKASI WEB                      |
-|  - Mengelola sesi pengguna & logika bisnis aplikasi web           |
-|  - Menyimpan riwayat pengecekan ke Database Utama                 |
-|  - Meneruskan permintaan analisis ke AI Service (Timeout >= 90s)  |
-+---------------------------------+---------------------------------+
-                                  | HTTP Internal + Header X-API-Token
-                                  v
-+-------------------------------------------------------------------+
-|                 CEGAHSCAM AI SERVICE (MLOps Scope)                |
-|  - FastAPI Python 3.12 (Stateless, Non-Root Docker Container)     |
-|  - In-Memory Knowledge Base (RAG Ringan) & Bank Whitelist         |
-|  - Integrasi Upstream: OpenRouter Multimodal LLM & GetContact     |
+|               SERVER VPS UBUNTU — CEGAHSCAM AI SERVICE            |
+|                                                                   |
+|  [1] UFW Firewall (Hanya membuka Port 22/SSH, 80/HTTP, 443/HTTPS) |
+|                                 |                                 |
+|  [2] Nginx Reverse Proxy + Certbot Let's Encrypt SSL              |
+|      - client_max_body_size 20M; (mendukung gambar hingga 15 MB)  |
+|      - proxy_read_timeout 90s;   (mendukung inferensi LLM <= 60s) |
+|                                 |                                 |
+|                                 v (http://127.0.0.1:8000 lokal)   |
+|  [3] Systemd Service (cegahscam-ai.service) + Python 3.12 .venv   |
+|      - FastAPI + Uvicorn (--proxy-headers)                        |
+|      - CORSMiddleware + X-API-Token Auth Middleware               |
+|      - In-Memory Knowledge Base (RAG) & Bank Whitelist            |
+|      - Mode Sakelar: MOCK_MODE=true (Testing) <-> false (Live)    |
 +-------------------------------------------------------------------+
 ```
 
-### Keputusan Arsitektural MLOps:
+### Keputusan Arsitektural & Perencanaan Deployment MLOps:
 1. **Mengapa Memilih FastAPI dibanding Flask?**
    FastAPI mendukung pemrograman asinkron (*native async/await*) secara bawaan yang sangat krusial untuk beban kerja berbasis jaringan (*I/O-bound*) seperti pemanggilan LLM dan API pihak ketiga. Selain itu, FastAPI memvalidasi skema input-output secara ketat menggunakan **Pydantic v2** dan menghasilkan dokumentasi OpenAPI/Swagger secara otomatis.
-2. **Mengapa AI Service Dirancang *Stateless* (Tidak Menyentuh Database Langsung)?**
-   Penyimpanan riwayat cek scam pengguna ke database dilakukan oleh **backend utama aplikasi web**, bukan oleh AI Service. Desain ini mencegah duplikasi kredensial database, menghilangkan risiko *database connection exhaustion* di sisi model AI, dan memungkinkan kontainer AI Service di-*scale* atau di-*restart* kapan saja tanpa risiko korupsi data.
-3. **Mengapa Menggunakan *Multi-Container* (Docker Compose) dibanding Satu Kontainer Monolit?**
-   Menyatukan Frontend, Backend Utama, dan AI Service di dalam satu kontainer tunggal melanggar prinsip *single responsibility per container*. Dengan memisahkan AI Service ke dalam kontainer Docker tersendiri yang berkomunikasi lewat jaringan internal Docker Compose, pembaruan model AI dapat dilakukan tanpa mematikan layanan web utama.
-
-### 2.1. Rekomendasi Topologi Deployment Cloud & Struktur Folder Server (Bahan Pertimbangan Tim)
-
-Sebagai rekomendasi teknis MLOps untuk tahap deployment (bukan keputusan akhir yang mengikat tim), terdapat dua opsi topologi server yang dikaji:
-
-- **Opsi A — Satu Server VPS + Docker Compose Multi-Container *(Rekomendasi Utama MLOps)*:**
-  - **Kelebihan:** Port `8000` AI Service tertutup sepenuhnya dari internet publik (hanya diakses oleh `backend-web` melalui `http://ai-service:8000` di dalam *Docker internal network*), latensi komunikasi antar-service 0 ms, biaya hemat (cukup 1 VPS untuk seluruh stack), dan waktu setup paling cepat untuk mengejar target 17 November 2026.
-  - **Kekurangan:** Berbagi resource CPU/RAM dalam satu VPS (namun aman karena AI Service bersifat *stateless* dengan konsumsi RAM ±150–250 MB).
-- **Opsi B — Server Mandiri Terpisah Khusus AI Service:**
-  - **Kelebihan:** Isolasi penuh beban CPU/RAM dan kemudahan *independent scaling* jika trafik mencapai ribuan request per menit di masa depan.
-  - **Kekurangan:** Biaya sewa server berlipat, menambah latensi pengiriman gambar lintas internet, serta menuntut pengaturan firewall *IP Whitelisting* dan SSL/HTTPS tambahan karena port AI Service harus dibuka ke jaringan luar.
-
-#### Rekomendasi Struktur Folder Penyatuan Tiga Repositori di Server (Jika Menggunakan Opsi A):
-Ketiga repositori tetap dikelola secara terpisah di GitHub, lalu di-`git clone` berdampingan di bawah satu folder induk pada server VPS (`/opt/cegahscam/`):
-
-```text
-/opt/cegahscam/                       <-- Root folder proyek di Server VPS
-├── docker-compose.yml                <-- Mengatur 3 container (frontend, backend, ai-service)
-├── Caddyfile / nginx.conf            <-- Reverse proxy (mengatur domain HTTPS port 80/443)
-├── frontend-web/                     <-- Hasil git clone repo Frontend Aplikasi Web
-├── backend-web/                      <-- Hasil git clone repo Backend Utama Aplikasi Web
-└── ai-service/                       <-- Hasil git clone repo AI Service (repo ini)
-    ├── Dockerfile                    <-- Non-root container (appuser UID 10001)
-    ├── .env                          <-- OPENROUTER_API_KEY & CEGAHSCAM_API_TOKEN
-    └── app/data/gtc_credentials.json <-- Di-mount read-only (:ro) ke dalam container
-```
+2. **Mengapa Menggunakan Metode A (`.venv` + `systemd` + Nginx + Certbot) di VPS?**
+   - **Kelebihan:**
+     - **Sangat ringan di RAM & CPU:** Tidak membutuhkan beban tambahan daemon kontainer di VPS, sehingga seluruh memori server dapat difokuskan untuk proses Python/Uvicorn dan Nginx.
+     - **Isolasi Port Lokal (`127.0.0.1:8000`):** Uvicorn hanya mendengarkan di `localhost` (`127.0.0.1`), bukan `0.0.0.0`. Dunia luar hanya bisa masuk melalui Nginx pada port `443` (HTTPS).
+     - **Kemudahan Operasional (Update Kredensial & Sakelar Mock/Live Instan):** Mengganti `OPENROUTER_API_KEY` atau mengubah `MOCK_MODE=true` ke `MOCK_MODE=false` di `/var/www/cegahscam-ai/.env` cukup diikuti perintah `sudo systemctl restart cegahscam-ai` yang selesai dalam ~1 detik. Bahkan pembaruan `app/data/gtc_credentials.json` langsung terbaca di setiap request tanpa perlu me-restart service.
+   - **Kekurangan & Mitigasinya:**
+     - Bergantung pada versi Python OS di VPS $\rightarrow$ dimitigasi dengan menggunakan **Ubuntu 24.04 LTS** yang sudah menyertakan **Python 3.12** secara bawaan dan mengisolasi paket di dalam `.venv`.
+3. **Penyesuaian Konfigurasi Nginx Khusus Karakteristik CegahScam:**
+   - **`client_max_body_size 20M;`:** Secara bawaan Nginx menolak upload > 1 MB (`413 Request Entity Too Large`). Karena CegahScam menerima gambar bukti hingga **15 MB**, batas body Nginx dinaikkan menjadi 20 MB.
+   - **`proxy_read_timeout 90s;` & `proxy_connect_timeout 60s;`:** Karena analisis multimodal LLM membutuhkan waktu median 14 detik (dan maksimal 60 detik), timeout baca Nginx dinaikkan menjadi 90 detik agar tidak memutus koneksi lebih awal (`504 Gateway Timeout`).
+4. **Strategi Manajemen Kuota: Mode Mock Online (`MOCK_MODE=true`) $\rightarrow$ Mode Live (`MOCK_MODE=false`):**
+   - Saat AI Service pertama kali live di VPS dan tim web sedang menguji integrasi antarmuka mereka, `.env` di VPS disetel ke `MOCK_MODE=true`. Tim web dapat menembak endpoint online sepuasnya dengan waktu respons < 50 ms, validasi input & kontak bank tetap berjalan 100% nyata, namun **kuota OpenRouter dan GetContact (200/periode) terpakai 0**.
+   - Status mode server setiap saat dapat diperiksa secara transparan melalui `GET /health` (`{"status": "ok", "message": "CegahScam AI Service is healthy", "mock_mode": true}`).
+   - Ketika integrasi tim web sudah tuntas, MLOps mengubah `.env` menjadi `MOCK_MODE=false` dan menjalankan `sudo systemctl restart cegahscam-ai` untuk beralih ke **Mode Live** tanpa mengubah URL maupun kode di sisi tim web.
 
 ---
 
@@ -132,24 +118,23 @@ Meskipun inferensi utama menggunakan Foundation Model melalui OpenRouter (`nvidi
                                      v
 +-------------------------------------------------------------------------+
 | TAHAP 3: Pengujian Mutu & Evaluasi Kuantitatif (MLOps Quality Gate)     |
-| - Menjalankan 63 automated unit/integration tests (pytest).             |
+| - Menjalankan 65 automated unit/integration tests (pytest).             |
 | - Menjalankan skrip evaluasi (eval/evaluate_phase2.py) terhadap         |
 |   Golden Dataset untuk memastikan Precision, Recall, & F1 tidak turun.  |
 +------------------------------------+------------------------------------+
                                      |
                                      v
 +-------------------------------------------------------------------------+
-| TAHAP 4: Kontainerisasi & Manajemen Versi (Container Versioning)        |
-| - Mencatat perubahan di Git (commit terstruktur).                       |
-| - Membangun ulang image Docker (docker build -t cegahscam-ai:v1.x .)    |
-|   dan memastikan pip-audit bebas dari kerentanan (0 CVE).               |
+| TAHAP 4: Manajemen Versi & Audit Dependensi (Versioning & Security)     |
+| - Mencatat perubahan di Git (git commit & push ke repositori utama).    |
+| - Memastikan pip-audit bebas dari kerentanan (0 CVE).                   |
 +------------------------------------+------------------------------------+
                                      |
                                      v
 +-------------------------------------------------------------------------+
-| TAHAP 5: Deployment & Pemantauan Produksi (Release & Drift Monitoring)  |
-| - Me-restart kontainer AI Service di server cloud via Docker Compose.   |
-| - Memantau endpoint /health, latensi respons, sisa kuota API eksternal, |
+| TAHAP 5: Deployment & Pemantauan Produksi di VPS (Release & Monitoring) |
+| - Menarik pembaruan di VPS (git pull) & sudo systemctl restart.         |
+| - Memantau endpoint /health, journalctl, latensi respons, sisa kuota,   |
 |   serta mendeteksi kemunculan modus baru yang belum terklasifikasi.     |
 +-------------------------------------------------------------------------+
 ```
@@ -178,9 +163,11 @@ Apabila di masa mendatang muncul modus penipuan baru di masyarakat (misalnya mod
    venv\Scripts\python.exe -m pytest
    venv\Scripts\python.exe -u eval\evaluate_phase2.py
    ```
-3. **Bangun & Rilis Ulang Kontainer Docker:**
-   ```powershell
-   docker build -t cegahscam-ai:latest .
+3. **Push ke GitHub & Terapkan di VPS Produksi:**
+   ```bash
+   cd /var/www/cegahscam-ai
+   git pull origin main
+   sudo systemctl restart cegahscam-ai
    ```
 
 ---
@@ -218,24 +205,19 @@ Pengujian dilakukan menggunakan sampel berstrata (*stratified sample*, `seed=42`
 ### 4.3. Temuan Utama Evaluasi
 1. **Precision 100% (Zero False Positive):** Seluruh percakapan normal diklasifikasikan dengan tepat sebagai risiko `Rendah` (skor 5–10).
 2. **Konversi *False Negative* menjadi *True Positive*:** Pada kasus *Modus Penipuan Transfer Uang* (Row 892: instruksi transfer singkat ke rekening BNI tanpa tautan phishing), model Baseline memberikan `risk_score: 30` (*False Negative*). Dengan suntikan referensi Knowledge Base (`bni`, `rekening`, `transfer`), skor meningkat menjadi **`65` (`Tinggi`)** (*True Positive*) disertai rekomendasi SOP mitigasi yang akurat.
-3. **Kinerja Latensi:** Latensi median (*p50*) tercatat **14,00 detik** (rata-rata *mean* Baseline: **19,91 detik**), menjadi dasar ilmiah penetapan syarat timeout minimal **90 detik** pada kontrak integrasi backend utama.
+3. **Kinerja Latensi:** Latensi median (*p50*) tercatat **14,00 detik** (rata-rata *mean* Baseline: **19,91 detik**), menjadi dasar ilmiah penetapan syarat timeout minimal **90 detik** pada konfigurasi Nginx dan kontrak integrasi web.
 
 ---
 
-## 5. Matriks Pencapaian 13 Target MLOps
+## 5. Matriks Pencapaian 8 Target Utama MLOps
 
 | No | Target Capaian MLOps | Status | Bukti & Implementasi di Repositori |
 |---|---|---|---|
-| **1** | Sistem/model AI live di internet sebagai backend untuk web | **Siap Deploy (Fase 4–5)** | Seluruh endpoint bisnis dan kontainer produksi siap di-deploy ke server cloud. |
-| **2** | Memilih teknologi backend (Flask / FastAPI) | **Selesai 100%** | Menggunakan **FastAPI (Python 3.12)** dengan Pydantic v2 dan Uvicorn. |
+| **1** | Sistem AI / model AI bisa live di internet sebagai backend dan bisa digunakan dalam frontend web | **Siap Deploy ke VPS** | Dilengkapi `CORSMiddleware` (`CORS_ORIGINS`), autentikasi `X-API-Token`, dan siap diakses online melalui HTTPS pada VPS Ubuntu mandiri. |
+| **2** | Memilih teknologi backend (disarankan: Flask atau FastAPI) | **Selesai 100%** | Menggunakan **FastAPI (Python 3.12)** dengan Pydantic v2 dan Uvicorn. |
 | **3** | Membuat API endpoint untuk mengakses model | **Selesai 100%** | 5 endpoint bisnis (`/analyze/text` untuk teks & teks+gambar, `/analyze/image`, `/analyze/phone`, `/emergency/financial`, `/emergency/data-breach`) + `/health`. |
-| **4** | Pengujian input-output sesuai kontrak API | **Selesai 100%** | **64 skenario pengujian otomatis (`pytest`) lulus 100%**, terdokumentasi di `api-contract.md` dan `PENGUJIAN.md`. |
-| **5** | Optimasi model di backend agar performa lebih baik | **Selesai 100%** | Eksekusi *threadpool non-blocking*, *chunked upload* 1 MB, serta optimasi *Lightweight RAG* (`min_keywords=3`) yang menaikkan F1-Score ke **92,31%** (Fraud-Only). |
-| **6** | Menguji integrasi model ke dalam sistem web | **Fase 3** | Kontrak API, fitur simulasi `MOCK_MODE=true`, dan panduan [`PANDUAN_INTEGRASI.md`](PANDUAN_INTEGRASI.md) siap digunakan begitu backend utama dan frontend dari tim web siap. |
-| **7** | Menyediakan dokumentasi penggunaan model | **Selesai 100%** | Tersedia di `README.md`, `api-contract.md`, `PANDUAN_INTEGRASI.md`, `PENGUJIAN.md`, `SECURITY.md`, `CONTEXT.md`, berkas ini (`dokumentasi.md`), dan Swagger `/docs`. |
-| **8** | Mempersiapkan deployment ke platform cloud | **Fase 4** | Direkomendasikan menggunakan **VPS Linux mandiri + Docker Compose** untuk menghindari masalah *cold start* pada PaaS gratis. |
-| **9** | Membungkus aset ke dalam "kotak pelindung" Docker | **Selesai 100%** | `Dockerfile` multi-stage dengan user non-root `appuser` (UID 10001), `HEALTHCHECK` terpasang, dan dependensi bersih (**0 CVE**). |
-| **10** | Menyambungkan layanan ke sistem web & database utama | **Selesai (Arsitektur Stateless)** | Dirancang sebagai *stateless microservice* yang dipanggil oleh backend utama via REST API; penyimpanan database ditangani oleh backend utama. |
-| **11** | Menyewa & mengatur server cloud (OS, port, domain) | **Fase 4** | Rencana pengerasan server: Ubuntu LTS, firewall hanya membuka port 80/443/SSH, reverse proxy HTTPS, port 8000 AI Service diisolasi secara internal. |
-| **12** | Men-deploy Docker aplikasi ke server cloud | **Fase 5** | Orkestrasi multi-container menggunakan Docker Compose pada server target sebelum tenggat 17 November 2026. |
-| **13** | Memantau resource server & mengamankan kunci API | **Selesai di Kode, Lanjut di Server** | `OPENROUTER_API_KEY`, `CEGAHSCAM_API_TOKEN`, dan `gtc_credentials.json` diisolasi dari Git/Docker image; PII disamarkan dari log aplikasi. |
+| **4** | Melakukan pengujian input-output agar sesuai dengan kontrak API | **Selesai 100%** | **65 skenario pengujian otomatis (`pytest`) lulus 100%**, terdokumentasi di `api-contract.md` dan `PENGUJIAN.md`. |
+| **5** | Melakukan optimasi model di backend agar performa lebih baik | **Selesai 100%** | Eksekusi *threadpool non-blocking*, *chunked upload* 1 MB, serta optimasi *Lightweight RAG* (`min_keywords=3`) yang menaikkan F1-Score ke **92,31%** (Fraud-Only). |
+| **6** | Menguji integrasi model ke dalam sistem web | **Siap Integrasi** | Tersedia sakelar `MOCK_MODE=true` (untuk uji integrasi online tanpa kuota) $\leftrightarrow$ `MOCK_MODE=false` (Mode Live) beserta panduan [`panduan_implementasi.md`](panduan_implementasi.md). |
+| **7** | Menyediakan dokumentasi penggunaan model | **Selesai 100%** | Tersedia di `README.md`, `api-contract.md`, `panduan_implementasi.md`, `PENGUJIAN.md`, `SECURITY.md`, berkas ini (`dokumentasi.md`), dan Swagger `/docs`. |
+| **8** | Mempersiapkan deployment ke platform cloud (VPS) | **Selesai 100%** | Arsitektur deployment **Metode A (VPS Ubuntu + `.venv` + `systemd` + `Nginx` + `Certbot HTTPS`)** siap dijalankan. |

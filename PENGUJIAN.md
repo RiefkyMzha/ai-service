@@ -7,11 +7,10 @@ Dokumen ini mencatat kontrak API dan hasil pengujian **input → output** yang b
 | Item | Nilai |
 |---|---|
 | Tanggal eksekusi | 2026-10-28 11:03 (smoke sukses) & 11:19 (uji negatif §5) |
-| Metode | `pytest` (42 test, jaringan di-mock) + smoke test HTTP ke container |
-| Hasil otomatis | **61 passed** |
+| Metode | `pytest` (65 test, jaringan di-mock) + smoke test HTTP |
+| Hasil otomatis | **65 passed** |
 | Hasil smoke | **15/15 sesuai kontrak** (8 sukses, 7 negatif) |
-| Container | `cegahscam-ai`, status `healthy` |
-| Image | `cegahscam-ai:latest` — digest `sha256:53d28a0…6eed5`, 228 MB |
+| Status layanan | `cegahscam-ai`, status `healthy` |
 | Base URL | `http://127.0.0.1:8000` |
 | Model AI | `nvidia/nemotron-3.5-super-vl:free` via OpenRouter |
 
@@ -19,10 +18,8 @@ Dokumen ini mencatat kontrak API dan hasil pengujian **input → output** yang b
 
 | Komponen | Versi / keterangan |
 |---|---|
-| OS host | Windows (Docker Desktop, Linux container) |
 | Python (venv) | 3.12.10 |
 | FastAPI / Pydantic | 0.162.0 / 2.14.1 |
-| Image dasar | `python:3.12-slim` |
 | Endpoint health | `GET /health` |
 
 Reproduksi:
@@ -242,7 +239,7 @@ Respons: **HTTP 200**, ±16,1 s
 
 ## 5. Pengujian negatif (HTTP riil)
 
-Semua baris di bawah adalah respons nyata dari container `cegahscam-ai` pada 2026-10-28 (sesi 11:03 dan 11:19), bukan hasil mock. Latensi ±0 detik karena validasi berhenti sebelum memanggil OpenRouter/GetContact.
+Semua baris di bawah adalah respons nyata dari layanan `cegahscam-ai` pada 2026-10-28 (sesi 11:03 dan 11:19), bukan hasil mock. Latensi ±0 detik karena validasi berhenti sebelum memanggil OpenRouter/GetContact.
 
 | Kasus | Request | Status | Respons aktual |
 |---|---|---|---|
@@ -258,7 +255,7 @@ Jalur `408`/`500`/`502` belum diuji lewat HTTP karena butuh kondisi khusus (API 
 
 ## 6. Pengujian otomatis
 
-Perintah: `venv\Scripts\python.exe -m pytest` → **64 passed**.
+Perintah: `venv\Scripts\python.exe -m pytest` → **65 passed**.
 
 | File | Fokus |
 |---|---|
@@ -294,7 +291,7 @@ Aturan lengkap ada di [`api-contract.md` §4](api-contract.md); tabel di bawah a
 - Latensi terukur ±4–24 detik, tergantung endpoint dan model; service berjalan satu proses.
 - `/analyze/phone` bergantung pada sesi GetContact di `app/data/gtc_credentials.json`; sesi kedaluwarsa → 502 sampai file diperbarui.
 - Service tidak menyimpan riwayat dan tidak membuat PDF; itu tanggung jawab backend utama aplikasi web.
-- Semua respons di atas adalah hasil nyata dari container `cegahscam-ai` pada tanggal pengujian, bukan contoh rekaan.
+- Semua respons di atas adalah hasil nyata dari layanan `cegahscam-ai` pada tanggal pengujian, bukan contoh rekaan.
 
 ## 9. Evaluasi Kualitas Deteksi & Eksperimen Optimasi (Fase 2)
 
