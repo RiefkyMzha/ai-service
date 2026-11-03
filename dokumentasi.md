@@ -159,7 +159,7 @@ Apabila di masa mendatang muncul modus penipuan baru di masyarakat (misalnya mod
 
 ---
 
-## 4. Bukti Eksperimen Optimasi & Evaluasi Kinerja Model (Fase 2)
+## 4. Bukti Eksperimen Optimasi & Evaluasi Kinerja Model
 
 Sebagai bukti nyata pelaksanaan jobdesk **Optimasi Model** dan **Pemantauan Kinerja Model**, dilakukan eksperimen perbandingan terkontrol (*Before vs After*) antara model **Baseline** (sebelum `knowledge_base_cegahscam.json` diaktifkan) dan model **Optimasi Knowledge Base (`min_keywords=3`)**.
 
