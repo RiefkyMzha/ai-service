@@ -87,7 +87,7 @@ Dipakai oleh `/emergency/financial` dan `/emergency/data-breach`.
 
 ## 3. Endpoint
 
-> Contoh request/response di bagian ini bersifat **ilustratif dan diringkas** — array `reasons`/`recommendations` serta `ai_kronologi` dipotong agar ringkas. Respons HTTP nyata apa adanya (verbatim, termasuk latensi) ada di [`PENGUJIAN.md`](PENGUJIAN.md) §4.
+> Contoh request/response di bagian ini bersifat **ilustratif dan diringkas** — array `reasons`/`recommendations` serta `ai_kronologi` dipotong agar ringkas. Respons HTTP nyata apa adanya (verbatim, termasuk latensi) ada di [`README.md`](README.md).
 
 ### 3.1 `POST /api/v1/analyze/text`
 
