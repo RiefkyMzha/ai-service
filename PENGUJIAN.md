@@ -153,7 +153,7 @@ Request:
 
 ```powershell
 curl.exe -X POST http://127.0.0.1:8000/api/v1/emergency/financial `
-  -F "bank_korban=BCA" -F "kanal_media=WhatsApp" -F "tanggal_kejadian=2026-10-27" `
+  -F "bank_korban=BCA" -F "platform_kejadian=WhatsApp" -F "tanggal_kejadian=2026-10-27" `
   -F "tujuan_transaksi=Pembelian barang" -F "nomor_rekening_penipu=1234567890" `
   -F "nominal_kerugian=1500000" -F "nama_institusi_penipu=Toko Online Palsu" `
   -F "kronologi_user=Saya transfer untuk barang yang tidak pernah dikirim." `
@@ -204,7 +204,7 @@ Request:
 ```powershell
 curl.exe -X POST http://127.0.0.1:8000/api/v1/emergency/data-breach `
   -F "jenis_data=Data pribadi (nama, email)" -F "tanggal_kejadian=2026-10-27" `
-  -F "kanal_media=Instagram" -F "tindakan_pelaku=Meminta OTP" `
+  -F "platform_kejadian=Instagram" -F "tindakan_pelaku=Meminta OTP" `
   -F "status_akses=Masih bisa diakses" -F "kronologi_user=Akun saya diambil alih." `
   -F "bukti_percakapan=@bukti.png;type=image/png"
 ```

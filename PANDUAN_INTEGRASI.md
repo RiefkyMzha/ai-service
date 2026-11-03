@@ -127,8 +127,8 @@ X-API-Token: <nilai CEGAHSCAM_API_TOKEN>
 | `/api/v1/analyze/text` | `POST` | `application/x-www-form-urlencoded` atau `multipart/form-data` | `text_content` (wajib, 1–10.000 karakter), `image` (file JPG/PNG/WEBP $\le 15$ MB, **opsional** untuk analisis teks+gambar sekaligus) |
 | `/api/v1/analyze/image` | `POST` | `multipart/form-data` | `platform` (wajib, 1–50 karakter, misal `"WhatsApp"`), `image` (file JPG/PNG/WEBP $\le 15$ MB, wajib) |
 | `/api/v1/analyze/phone` | `POST` | `application/json` | `{"phone_number": "081234567890"}` |
-| `/api/v1/emergency/financial` | `POST` | `multipart/form-data` | `bank_korban`, `kanal_media`, `tanggal_kejadian`, `tujuan_transaksi`, `nomor_rekening_penipu`, `nominal_kerugian`, `nama_institusi_penipu` (opsional), `nama_pemilik_penipu` (opsional), `kronologi_user` (opsional), `bukti_transfer` (file gambar wajib) |
-| `/api/v1/emergency/data-breach` | `POST` | `multipart/form-data` | `jenis_data`, `tanggal_kejadian`, `kanal_media`, `tindakan_pelaku`, `status_akses`, `kronologi_user` (opsional), `bukti_percakapan` (file gambar wajib) |
+| `/api/v1/emergency/financial` | `POST` | `multipart/form-data` | `bank_korban`, `platform_kejadian`, `tanggal_kejadian` (`YYYY-MM-DD`), `tujuan_transaksi`, `nomor_rekening_penipu`, `nominal_kerugian`, `nama_institusi_penipu` (opsional), `nama_pemilik_penipu` (opsional), `kronologi_user` (opsional), `bukti_transfer` (file gambar wajib) |
+| `/api/v1/emergency/data-breach` | `POST` | `multipart/form-data` | `jenis_data`, `tanggal_kejadian` (`YYYY-MM-DD`), `platform_kejadian`, `tindakan_pelaku`, `status_akses`, `kronologi_user` (opsional), `bukti_percakapan` (file gambar wajib) |
 
 ---
 
@@ -279,3 +279,91 @@ Ketika **frontend aplikasi web** menerima data hasil analisis yang diteruskan ol
    - Tampilkan *loading spinner* atau pesan progres (misalnya: *"Sedang menganalisis bukti pesan..."*) dan nonaktifkan tombol *Submit* selama request berlangsung agar pengguna tidak menekan tombol berkali-kali.
 4. **Validasi Ukuran Gambar Sebelum Upload:**
    - Batasi input file di browser hanya menerima `.jpg`, `.jpeg`, `.png`, `.webp` dengan ukuran maksimal **15 MB** agar pengguna mendapat umpan balik instan sebelum file dikirim ke server.
+
+---
+
+## 6. Rekomendasi Arsitektur Deployment & Struktur Folder Server (Bahan Pertimbangan Tim)
+
+> **Catatan:** Bagian ini merupakan **rekomendasi teknis MLOps** untuk bahan diskusi dan pertimbangan tim, **bukan keputusan akhir yang mengikat**.
+
+Terdapat dua opsi utama untuk men-deploy AI Service bersama **frontend aplikasi web** dan **backend utama aplikasi web**:
+
+### 6.1. Perbandingan Opsi Deployment
+
+| Opsi Arsitektur | Kelebihan | Kekurangan | Pertimbangan |
+|---|---|---|---|
+| **Opsi A: Satu Server VPS + Docker Compose Multi-Container *(Rekomendasi MLOps)*** | - **Keamanan tinggi & sederhana:** Port `8000` AI Service tidak perlu dibuka ke internet publik; komunikasi `backend-web` ke `http://ai-service:8000` berjalan di jaringan internal Docker.<br>- **Latensi antar-service 0 ms:** Pengiriman teks dan gambar ($\le 15$ MB) dari backend utama ke AI Service terjadi di mesin yang sama.<br>- **Hemat biaya & cepat disiapkan:** Cukup 1 VPS (misal 2 vCPU / 2–4 GB RAM) dan 1 domain HTTPS untuk mengejar tenggat 17 November 2026. | - Ketiga layanan berbagi CPU dan RAM pada mesin yang sama (meski konsumsi RAM AI Service sangat ringan, ±150–250 MB karena bersifat *stateless*). | Sangat ideal untuk tahap peluncuran awal / demo dengan beban belasan hingga ratusan pengguna. |
+| **Opsi B: Server Mandiri Terpisah Khusus AI Service** | - **Isolasi penuh (*fault & resource isolation*):** Lonjakan beban pada server web utama tidak memengaruhi CPU/RAM AI Service.<br>- **Skalabilitas independen:** Mudah di-*scale* secara terpisah jika trafik mencapai ribuan request per menit. | - **Biaya berlipat:** Perlu menyewa minimal 2 server/VPS terpisah.<br>- **Konfigurasi keamanan lebih rumit:** Port AI Service harus dibuka ke internet dengan *IP Whitelisting* ketat, domain/subdomain tambahan, dan sertifikat HTTPS tersendiri.<br>- **Tambahan latensi jaringan:** Gambar hingga 15 MB harus dikirim lintas jaringan internet dua kali (User $\rightarrow$ Server Web $\rightarrow$ Server AI). | Lebih cocok diterapkan pada fase pengembangan lanjutan apabila trafik pengguna sudah berskala besar. |
+
+---
+
+### 6.2. Rekomendasi Struktur Folder Penyatuan Tiga Repositori di Server (Jika Memilih Opsi A)
+
+Apabila tim menyepakati **Opsi A**, kode dari ketiga repositori (**frontend aplikasi web**, **backend utama aplikasi web**, dan **AI Service**) tidak perlu dicampur di dalam satu repositori Git tunggal. Ketiganya cukup di-`git clone` berdampingan di dalam satu folder induk di server (misalnya `/opt/cegahscam/`) dan dirangkai menggunakan satu berkas `docker-compose.yml`:
+
+```text
+/opt/cegahscam/                       <-- Root folder proyek di Server VPS
+├── docker-compose.yml                <-- Mengatur 3 container (frontend, backend, ai-service)
+├── Caddyfile / nginx.conf            <-- Reverse proxy (mengatur domain HTTPS port 80/443)
+│
+├── frontend-web/                     <-- Hasil git clone repo Frontend Aplikasi Web
+│   ├── Dockerfile
+│   └── ... (kode frontend aplikasi web)
+│
+├── backend-web/                      <-- Hasil git clone repo Backend Utama Aplikasi Web
+│   ├── Dockerfile
+│   ├── .env                          <-- AI_SERVICE_URL=http://ai-service:8000 & CEGAHSCAM_API_TOKEN
+│   └── ... (kode backend utama aplikasi web)
+│
+└── ai-service/                       <-- Hasil git clone repo AI Service
+    ├── Dockerfile                    <-- Sudah tersedia (non-root appuser UID 10001)
+    ├── .env                          <-- OPENROUTER_API_KEY & CEGAHSCAM_API_TOKEN
+    └── app/
+        └── data/
+            └── gtc_credentials.json  <-- Di-mount read-only (:ro) ke dalam container ai-service
+```
+
+#### Contoh Ilustrasi `docker-compose.yml` di Folder Induk (`/opt/cegahscam/docker-compose.yml`):
+```yaml
+services:
+  ai-service:
+    build: ./ai-service
+    container_name: cegahscam-ai
+    env_file:
+      - ./ai-service/.env
+    volumes:
+      - ./ai-service/app/data/gtc_credentials.json:/app/app/data/gtc_credentials.json:ro
+    expose:
+      - "8000" # Hanya terbuka di dalam internal-net, TIDAK terbuka ke internet publik
+    networks:
+      - internal-net
+    restart: unless-stopped
+
+  backend-web:
+    build: ./backend-web
+    container_name: cegahscam-backend
+    environment:
+      - AI_SERVICE_URL=http://ai-service:8000
+      - CEGAHSCAM_API_TOKEN=${CEGAHSCAM_API_TOKEN}
+    depends_on:
+      - ai-service
+    networks:
+      - internal-net
+    restart: unless-stopped
+
+  frontend-web:
+    build: ./frontend-web
+    container_name: cegahscam-frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend-web
+    networks:
+      - internal-net
+    restart: unless-stopped
+
+networks:
+  internal-net:
+    driver: bridge
+```

@@ -205,7 +205,7 @@ def test_process_emergency_encapsulates_user_input_and_separates_roles(monkeypat
         )
 
     monkeypatch.setattr(AIService, "_call_openrouter", fake_call)
-    run(service.process_emergency({"bank_korban": "BCA", "kanal_media": "WhatsApp"}, None, is_financial=True))
+    run(service.process_emergency({"bank_korban": "BCA", "platform_kejadian": "WhatsApp"}, None, is_financial=True))
 
     assert len(captured_messages) == 2
     assert captured_messages[0]["role"] == "system"

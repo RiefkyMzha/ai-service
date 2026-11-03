@@ -54,7 +54,7 @@ async def analyze_phone(
 @router.post("/emergency/financial", response_model=EmergencyResponse)
 async def emergency_financial(
     bank_korban: str = Form(..., min_length=1, max_length=100),
-    kanal_media: str = Form(..., min_length=1, max_length=100),
+    platform_kejadian: str = Form(..., min_length=1, max_length=100),
     tanggal_kejadian: str = Form(..., min_length=1, max_length=10),
     tujuan_transaksi: str = Form(..., min_length=1, max_length=200),
     nomor_rekening_penipu: str = Form(..., min_length=1, max_length=50),
@@ -67,7 +67,7 @@ async def emergency_financial(
 ):
     incident_data = {
         "bank_korban": bank_korban,
-        "kanal_media": kanal_media,
+        "platform_kejadian": platform_kejadian,
         "tanggal_kejadian": tanggal_kejadian,
         "tujuan_transaksi": tujuan_transaksi,
         "nomor_rekening_penipu": nomor_rekening_penipu,
@@ -83,7 +83,7 @@ async def emergency_financial(
 async def emergency_data_breach(
     jenis_data: str = Form(..., min_length=1, max_length=200),
     tanggal_kejadian: str = Form(..., min_length=1, max_length=10),
-    kanal_media: str = Form(..., min_length=1, max_length=100),
+    platform_kejadian: str = Form(..., min_length=1, max_length=100),
     tindakan_pelaku: str = Form(..., min_length=1, max_length=200),
     status_akses: str = Form(..., min_length=1, max_length=100),
     kronologi_user: Optional[str] = Form(None, max_length=5_000),
@@ -93,7 +93,7 @@ async def emergency_data_breach(
     incident_data = {
         "jenis_data": jenis_data,
         "tanggal_kejadian": tanggal_kejadian,
-        "kanal_media": kanal_media,
+        "platform_kejadian": platform_kejadian,
         "tindakan_pelaku": tindakan_pelaku,
         "status_akses": status_akses,
         "kronologi_user": kronologi_user

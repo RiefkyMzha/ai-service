@@ -2,7 +2,7 @@ from tests.conftest import make_png
 
 FINANCIAL_FORM = {
     "bank_korban": "BCA",
-    "kanal_media": "WhatsApp",
+    "platform_kejadian": "WhatsApp",
     "tanggal_kejadian": "2026-10-27",
     "tujuan_transaksi": "Pembelian barang",
     "nomor_rekening_penipu": "1234567890",
@@ -13,7 +13,7 @@ FINANCIAL_FORM = {
 BREACH_FORM = {
     "jenis_data": "Data pribadi (nama, email)",
     "tanggal_kejadian": "2026-10-27",
-    "kanal_media": "Instagram",
+    "platform_kejadian": "Instagram",
     "tindakan_pelaku": "Meminta OTP",
     "status_akses": "Masih bisa diakses",
 }

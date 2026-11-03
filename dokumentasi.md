@@ -61,6 +61,32 @@ Dalam ekosistem CegahScam, komponen sistem dipisahkan menjadi tiga lapis indepen
 3. **Mengapa Menggunakan *Multi-Container* (Docker Compose) dibanding Satu Kontainer Monolit?**
    Menyatukan Frontend, Backend Utama, dan AI Service di dalam satu kontainer tunggal melanggar prinsip *single responsibility per container*. Dengan memisahkan AI Service ke dalam kontainer Docker tersendiri yang berkomunikasi lewat jaringan internal Docker Compose, pembaruan model AI dapat dilakukan tanpa mematikan layanan web utama.
 
+### 2.1. Rekomendasi Topologi Deployment Cloud & Struktur Folder Server (Bahan Pertimbangan Tim)
+
+Sebagai rekomendasi teknis MLOps untuk tahap deployment (bukan keputusan akhir yang mengikat tim), terdapat dua opsi topologi server yang dikaji:
+
+- **Opsi A — Satu Server VPS + Docker Compose Multi-Container *(Rekomendasi Utama MLOps)*:**
+  - **Kelebihan:** Port `8000` AI Service tertutup sepenuhnya dari internet publik (hanya diakses oleh `backend-web` melalui `http://ai-service:8000` di dalam *Docker internal network*), latensi komunikasi antar-service 0 ms, biaya hemat (cukup 1 VPS untuk seluruh stack), dan waktu setup paling cepat untuk mengejar target 17 November 2026.
+  - **Kekurangan:** Berbagi resource CPU/RAM dalam satu VPS (namun aman karena AI Service bersifat *stateless* dengan konsumsi RAM ±150–250 MB).
+- **Opsi B — Server Mandiri Terpisah Khusus AI Service:**
+  - **Kelebihan:** Isolasi penuh beban CPU/RAM dan kemudahan *independent scaling* jika trafik mencapai ribuan request per menit di masa depan.
+  - **Kekurangan:** Biaya sewa server berlipat, menambah latensi pengiriman gambar lintas internet, serta menuntut pengaturan firewall *IP Whitelisting* dan SSL/HTTPS tambahan karena port AI Service harus dibuka ke jaringan luar.
+
+#### Rekomendasi Struktur Folder Penyatuan Tiga Repositori di Server (Jika Menggunakan Opsi A):
+Ketiga repositori tetap dikelola secara terpisah di GitHub, lalu di-`git clone` berdampingan di bawah satu folder induk pada server VPS (`/opt/cegahscam/`):
+
+```text
+/opt/cegahscam/                       <-- Root folder proyek di Server VPS
+├── docker-compose.yml                <-- Mengatur 3 container (frontend, backend, ai-service)
+├── Caddyfile / nginx.conf            <-- Reverse proxy (mengatur domain HTTPS port 80/443)
+├── frontend-web/                     <-- Hasil git clone repo Frontend Aplikasi Web
+├── backend-web/                      <-- Hasil git clone repo Backend Utama Aplikasi Web
+└── ai-service/                       <-- Hasil git clone repo AI Service (repo ini)
+    ├── Dockerfile                    <-- Non-root container (appuser UID 10001)
+    ├── .env                          <-- OPENROUTER_API_KEY & CEGAHSCAM_API_TOKEN
+    └── app/data/gtc_credentials.json <-- Di-mount read-only (:ro) ke dalam container
+```
+
 ---
 
 ## 3. Siklus Hidup Pemeliharaan & Pembaruan Model (*LLMOps Model Lifecycle*)

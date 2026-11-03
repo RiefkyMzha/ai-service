@@ -182,8 +182,8 @@ Menyusun kronologi dan langkah penanganan kasus penipuan finansial.
 | Field | Tipe | Wajib | Batasan |
 |---|---|---|---|
 | `bank_korban` | string | ya | 1–100 |
-| `kanal_media` | string | ya | 1–100 |
-| `tanggal_kejadian` | string | ya | maks. 10 (`YYYY-MM-DD`) |
+| `platform_kejadian` | string | ya | 1–100 (misal `"WhatsApp"`, `"Telegram"`, `"Instagram"`) |
+| `tanggal_kejadian` | string | ya | maks. 10 (`YYYY-MM-DD`, contoh: `"2026-11-03"`) |
 | `tujuan_transaksi` | string | ya | 1–200 |
 | `nomor_rekening_penipu` | string | ya | 1–50 |
 | `nominal_kerugian` | number | ya | ≥ 0 |
@@ -195,7 +195,7 @@ Menyusun kronologi dan langkah penanganan kasus penipuan finansial.
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/emergency/financial \
   -H "X-API-Token: <CEGAHSCAM_API_TOKEN>" \
-  -F "bank_korban=BCA" -F "kanal_media=WhatsApp" \
+  -F "bank_korban=BCA" -F "platform_kejadian=WhatsApp" \
   -F "tanggal_kejadian=2026-10-27" -F "tujuan_transaksi=Pembelian barang" \
   -F "nomor_rekening_penipu=1234567890" -F "nominal_kerugian=1500000" \
   -F "bukti_transfer=@bukti.png;type=image/png"
@@ -224,8 +224,8 @@ Respons `200`:
 | Field | Tipe | Wajib | Batasan |
 |---|---|---|---|
 | `jenis_data` | string | ya | 1–200 |
-| `tanggal_kejadian` | string | ya | maks. 10 |
-| `kanal_media` | string | ya | 1–100 |
+| `tanggal_kejadian` | string | ya | maks. 10 (`YYYY-MM-DD`, contoh: `"2026-11-03"`) |
+| `platform_kejadian` | string | ya | 1–100 (misal `"Instagram"`, `"Telegram"`, `"Facebook"`) |
 | `tindakan_pelaku` | string | ya | 1–200 |
 | `status_akses` | string | ya | 1–100 |
 | `kronologi_user` | string | tidak | ≤ 5.000 |
@@ -235,7 +235,7 @@ Respons `200`:
 curl -X POST http://127.0.0.1:8000/api/v1/emergency/data-breach \
   -H "X-API-Token: <CEGAHSCAM_API_TOKEN>" \
   -F "jenis_data=Data pribadi (nama, email)" -F "tanggal_kejadian=2026-10-27" \
-  -F "kanal_media=Instagram" -F "tindakan_pelaku=Meminta OTP" \
+  -F "platform_kejadian=Instagram" -F "tindakan_pelaku=Meminta OTP" \
   -F "status_akses=Masih bisa diakses" \
   -F "bukti_percakapan=@bukti.png;type=image/png"
 ```
