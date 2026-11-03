@@ -32,6 +32,6 @@ uploads/
 Thumbs.db
 
 
-# Dataset evaluasi: asal data belum jelas dan berpotensi memuat data pribadi
+# Dataset evaluasi
 eval/data/
 *.xlsx
