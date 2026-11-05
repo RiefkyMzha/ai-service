@@ -222,9 +222,9 @@ Service ini dirancang sebagai **layanan terautentikasi (`X-API-Token`)** yang di
 
 Bagian ini merangkum pengujian fungsional otomatis, verifikasi respons negatif HTTP riil, serta evaluasi kuantitatif kinerja model AI (*Precision, Recall, F1-Score, Latency*) pada dataset master penipuan siber.
 
-### 1. Pengujian Otomatis (`pytest`)
+### 1. Pengujian
 
-Pengujian otomatis mencakup **66 skenario uji** tanpa ketergantungan jaringan eksternal (OpenRouter dan GetContact di-mock):
+Pengujian mencakup **66 skenario uji** tanpa ketergantungan jaringan eksternal (OpenRouter dan GetContact di-mock):
 
 ```powershell
 venv\Scripts\pip.exe install -r requirements-dev.txt
