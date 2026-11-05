@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+import time
 from typing import Any, Dict
 
 import requests
@@ -21,7 +22,7 @@ MAX_IMAGE_BYTES = 15 * 1024 * 1024
 class AIService:
     def __init__(self, data_loader: DataLoader) -> None:
         self.api_url = "https://openrouter.ai/api/v1/chat/completions"
-        self.model = "nvidia/nemotron-3.5-super-vl:free"
+        self.model = settings.OPENROUTER_MODEL
         self.timeout = 60
         self.data_loader = data_loader
 
@@ -65,8 +66,9 @@ class AIService:
             "X-Title": "CegahScam AI",
         }
 
+        model_name = settings.OPENROUTER_MODEL or self.model
         payload = {
-            "model": self.model,
+            "model": model_name,
             "messages": messages,
             "temperature": 0.1,
             "response_format": {"type": "json_object"},
@@ -89,8 +91,16 @@ class AIService:
                 detail="Konfigurasi API AI tidak valid.",
             )
 
+        start_time = time.perf_counter()
         try:
-            return await run_in_threadpool(self._post_openrouter, messages)
+            content = await run_in_threadpool(self._post_openrouter, messages)
+            elapsed = time.perf_counter() - start_time
+            logger.info(
+                "Inferensi OpenRouter (%s) selesai dalam %.2f detik.",
+                settings.OPENROUTER_MODEL or self.model,
+                elapsed,
+            )
+            return content
 
         except requests.Timeout as err:
             raise HTTPException(

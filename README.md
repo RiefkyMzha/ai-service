@@ -70,7 +70,7 @@ app/
   main.py            # entrypoint FastAPI + logging + CORSMiddleware
   api/routes.py      # 5 endpoint bisnis + dependency factory
   core/
-    config.py        # Settings (.env, termasuk MOCK_MODE & CORS_ORIGINS)
+    config.py        # Settings (.env, termasuk OPENROUTER_MODEL, MOCK_MODE, & CORS_ORIGINS)
     data_loader.py   # whitelist bank + indeks knowledge base (min_keywords=3)
     normalization.py # label LLM -> Bahasa Indonesia
     prompts.py       # prompt Vision/Reasoning/Emergency + guardrails
@@ -80,7 +80,7 @@ app/
     ai_service.py    # OpenRouter (threadpool), KB injection, chunked streaming gambar, MOCK_MODE
     phone_service.py # GetContact (threadpool) + enrichment + MOCK_MODE
   data/              # JSON bank, knowledge base, kredensial (lokal)
-tests/               # 65 test, tanpa jaringan (unit, route, auth, CORS, log, stream, KB, mock mode)
+tests/               # 66 test, tanpa jaringan (unit, route, auth, CORS, log, stream, KB, mock mode)
 eval/                # skrip evaluasi Fase 2 (evaluate_phase2.py); eval/data/ di-ignore Git
 ```
 
@@ -98,7 +98,7 @@ eval/                # skrip evaluasi Fase 2 (evaluate_phase2.py); eval/data/ di
 
 ## Arsitektur & Kebijakan Keamanan
 
-Service ini dirancang sebagai **layanan internal tertutup** yang hanya dapat diakses oleh backend resmi aplikasi web (backend utama), bukan langsung oleh publik atau browser frontend.
+Service ini dirancang sebagai **layanan terautentikasi (`X-API-Token`)** yang direkomendasikan diakses melalui **backend utama aplikasi web (Pola A)** agar token tetap tersembunyi di sisi server, serta dilengkapi `CORSMiddleware` terkonfigurasi (`CORS_ORIGINS`) untuk mendukung pengujian integrasi langsung dari **frontend aplikasi web (Pola B)**.
 
 ```
 [ Request Masuk dari Backend Utama ]
@@ -187,7 +187,7 @@ Service ini dirancang sebagai **layanan internal tertutup** yang hanya dapat dia
 - **Penyembunyian Detail Error Eksternal:** Exception mentah dari GetContact disaring sehingga potongan URL privat atau parameter sesi tidak tercatat di file log.
 
 #### Layer 5: Isolasi Server & Manajemen Secret
-- **Isolasi Port Lokal (`127.0.0.1:8000`) & Non-Root Service:** Pada server VPS, service `systemd` dijalankan di bawah user non-root (`www-data`) dan hanya mendengarkan pada `127.0.0.1:8000` di belakang Nginx Reverse Proxy + Certbot HTTPS.
+- **Isolasi Port Lokal (`127.0.0.1`) & Non-Root User:** Pada server VPS, service `systemd` dijalankan di bawah user non-root (`$APP_USER`) dan hanya mendengarkan pada `127.0.0.1` di belakang Nginx Reverse Proxy + Certbot HTTPS.
 - **Perlindungan File Rahasia:** File rahasia (`.env`, `gtc_credentials.json`) dieksklusikan dari Git melalui `.gitignore` dan dikunci izin aksesnya di server dengan `chmod 600`.
 - **Pemisahan Dataset:** Dataset master internal (`.xlsx`) dipisahkan ke direktori `eval/data/` yang diabaikan oleh Git.
 - **Pemindaian Kerentanan (Vulnerability Audit):** Seluruh dependensi produksi telah dipindai dengan `pip-audit` dan terverifikasi **0 kerentanan (No known vulnerabilities found)**.
@@ -218,13 +218,13 @@ Service ini dirancang sebagai **layanan internal tertutup** yang hanya dapat dia
 
 ---
 
-## Laporan Pengujian & Evaluasi Kinerja Model (MLOps)
+## Laporan Pengujian & Evaluasi Kinerja Model
 
 Bagian ini merangkum pengujian fungsional otomatis, verifikasi respons negatif HTTP riil, serta evaluasi kuantitatif kinerja model AI (*Precision, Recall, F1-Score, Latency*) pada dataset master penipuan siber.
 
 ### 1. Pengujian Otomatis (`pytest`)
 
-Pengujian otomatis mencakup **65 skenario uji** tanpa ketergantungan jaringan eksternal (OpenRouter dan GetContact di-mock):
+Pengujian otomatis mencakup **66 skenario uji** tanpa ketergantungan jaringan eksternal (OpenRouter dan GetContact di-mock):
 
 ```powershell
 venv\Scripts\pip.exe install -r requirements-dev.txt
@@ -239,7 +239,7 @@ venv\Scripts\python.exe -m pytest
 | `tests/test_routes.py` | Pengujian 5 rute bisnis, validasi error 400/413/422, penimpaan kontak palsu, dan simulasi mode `MOCK_MODE=true` |
 | `tests/test_auth.py` | Autentikasi `X-API-Token`, penolakan 401 token salah/tanpa header, fail-closed 500, preflight CORS, dan endpoint `/health` |
 
-### 2. Pengujian Negatif (HTTP Riil)
+### 2. Pengujian Negatif
 
 Pengujian batas input abnormal (*negative testing*) dieksekusi langsung terhadap server HTTP untuk memastikan aplikasi gagal secara aman (*graceful error handling*):
 
@@ -253,7 +253,7 @@ Pengujian batas input abnormal (*negative testing*) dieksekusi langsung terhadap
 | Ukuran gambar > 15 MB | File gambar berukuran 15 MB + 1 byte | **413** | `{"detail":"Ukuran gambar maksimal 15MB."}` |
 | Bukti transfer tidak dilampirkan | `POST /api/v1/emergency/financial` tanpa file | **422** | `{"detail":[{"type":"missing","loc":["body","bukti_transfer"],"msg":"Field required"}]}` |
 
-### 3. Evaluasi Kualitas Deteksi & Optimasi Knowledge Base (Fase 2)
+### 3. Evaluasi Kualitas Deteksi & Optimasi Knowledge Base
 
 Eksperimen evaluasi kuantitatif dieksekusi menggunakan skrip [`eval/evaluate_phase2.py`](eval/evaluate_phase2.py) terhadap sampel berstrata (*stratified sample*, `seed=42`, $N=25$ baris yang merepresentasikan seluruh 11 kategori dari 1.164 baris dataset master penipuan siber Indonesia) melalui pemanggilan model multimodal OpenRouter (`nvidia/nemotron-3.5-super-vl:free`).
 

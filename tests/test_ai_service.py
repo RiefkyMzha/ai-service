@@ -214,3 +214,33 @@ def test_process_emergency_encapsulates_user_input_and_separates_roles(monkeypat
     assert "<untrusted_evidence>" in user_text
     assert "- bank_korban: BCA" in user_text
 
+
+def test_openrouter_model_configurable_and_logs_latency(
+    monkeypatch, caplog, service: AIService
+):
+    monkeypatch.setattr(settings, "OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "OPENROUTER_MODEL", "custom/vision-model:free")
+    captured_payload = {}
+
+    class DummyResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"choices": [{"message": {"content": '{"ok": true}'}}]}
+
+    def fake_post(url, headers, json, timeout):
+        nonlocal captured_payload
+        captured_payload = json
+        return DummyResponse()
+
+    monkeypatch.setattr("app.services.ai_service.requests.post", fake_post)
+    caplog.set_level(logging.INFO)
+
+    result = run(service._call_openrouter([{"role": "user", "content": "tes"}]))
+
+    assert result == '{"ok": true}'
+    assert captured_payload["model"] == "custom/vision-model:free"
+    assert "Inferensi OpenRouter (custom/vision-model:free) selesai dalam" in caplog.text
+
+

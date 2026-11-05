@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     OPENROUTER_API_KEY: str = ""
+    OPENROUTER_MODEL: str = "nvidia/nemotron-3.5-super-vl:free"
 
     CEGAHSCAM_API_TOKEN: str = ""
     MOCK_MODE: bool = False
