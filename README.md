@@ -18,6 +18,7 @@ Lalu pilih salah satu mode di `.env`:
 Cocok untuk menguji integrasi backend utama dan frontend tanpa memerlukan `OPENROUTER_API_KEY` maupun `gtc_credentials.json`:
 ```env
 OPENROUTER_API_KEY=
+OPENROUTER_MODEL=
 CEGAHSCAM_API_TOKEN=token-rahasia-lokal-12345
 LOG_LEVEL=INFO
 MOCK_MODE=true
