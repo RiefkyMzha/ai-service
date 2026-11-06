@@ -71,7 +71,7 @@ app/
   main.py            # entrypoint FastAPI + logging + CORSMiddleware
   api/routes.py      # 5 endpoint bisnis + dependency factory
   core/
-    config.py        # Settings (.env, termasuk OPENROUTER_MODEL, MOCK_MODE, & CORS_ORIGINS)
+    config.py        # Settings (.env, termasuk OPENROUTER_MODEL, OPENROUTER_BASE_URL, MOCK_MODE, & CORS_ORIGINS)
     data_loader.py   # whitelist bank + indeks knowledge base (min_keywords=3)
     normalization.py # label LLM -> Bahasa Indonesia
     prompts.py       # prompt Vision/Reasoning/Emergency + guardrails

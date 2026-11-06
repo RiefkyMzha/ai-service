@@ -21,7 +21,7 @@ MAX_IMAGE_BYTES = 15 * 1024 * 1024
 
 class AIService:
     def __init__(self, data_loader: DataLoader) -> None:
-        self.api_url = "https://openrouter.ai/api/v1/chat/completions"
+        self.api_url = settings.OPENROUTER_BASE_URL
         self.model = settings.OPENROUTER_MODEL
         self.timeout = 60
         self.data_loader = data_loader
@@ -74,8 +74,9 @@ class AIService:
             "response_format": {"type": "json_object"},
         }
 
+        url = settings.OPENROUTER_BASE_URL or self.api_url
         resp = requests.post(
-            self.api_url,
+            url,
             headers=headers,
             json=payload,
             timeout=self.timeout,

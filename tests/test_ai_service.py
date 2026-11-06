@@ -220,7 +220,9 @@ def test_openrouter_model_configurable_and_logs_latency(
 ):
     monkeypatch.setattr(settings, "OPENROUTER_API_KEY", "test-key")
     monkeypatch.setattr(settings, "OPENROUTER_MODEL", "custom/vision-model:free")
+    monkeypatch.setattr(settings, "OPENROUTER_BASE_URL", "https://custom.endpoint/v1/chat/completions")
     captured_payload = {}
+    captured_url = ""
 
     class DummyResponse:
         def raise_for_status(self):
@@ -230,8 +232,9 @@ def test_openrouter_model_configurable_and_logs_latency(
             return {"choices": [{"message": {"content": '{"ok": true}'}}]}
 
     def fake_post(url, headers, json, timeout):
-        nonlocal captured_payload
+        nonlocal captured_payload, captured_url
         captured_payload = json
+        captured_url = url
         return DummyResponse()
 
     monkeypatch.setattr("app.services.ai_service.requests.post", fake_post)
@@ -241,6 +244,7 @@ def test_openrouter_model_configurable_and_logs_latency(
 
     assert result == '{"ok": true}'
     assert captured_payload["model"] == "custom/vision-model:free"
+    assert captured_url == "https://custom.endpoint/v1/chat/completions"
     assert "Inferensi OpenRouter (custom/vision-model:free) selesai dalam" in caplog.text
 
 

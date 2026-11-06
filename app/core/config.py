@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_MODEL: str = "nvidia/nemotron-3.5-super-vl:free"
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1/chat/completions"
 
     CEGAHSCAM_API_TOKEN: str = ""
     MOCK_MODE: bool = False
