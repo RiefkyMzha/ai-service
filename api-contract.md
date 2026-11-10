@@ -240,7 +240,7 @@ curl -X POST http://127.0.0.1:8000/api/v1/emergency/data-breach \
   -F "bukti_percakapan=@bukti.png;type=image/png"
 ```
 
-Respons `200`: bentuk `EmergencyResponse`; `official_contact` selalu `null` untuk alur ini.
+Respons `200`: bentuk `EmergencyResponse`. `official_contact` diisi dari pencocokan nama bank pada `kronologi_user`/`tindakan_pelaku`/`jenis_data`, atau fallback ke `Otoritas Jasa Keuangan (OJK)` (`157`) bila `jenis_data` berkaitan dengan akun perbankan/finansial atau kartu kredit/debit (selain itu `null`).
 
 ### 3.6 `GET /health`
 
@@ -253,7 +253,7 @@ Dipakai untuk memantau status layanan dan mengetahui apakah server sedang berjal
 ## 4. Aturan `official_contact`
 
 - Field opsional, tetapi **wajib terisi** bila bank terdeteksi ada di `app/data/Bank_Call_Senter_Final.json` (100 entri, bentuk `{name, call, aliases?}`).
-- Sumber bukti: `text_content` (text), `bank_korban` (financial), profil/tag GetContact (phone). Endpoint image tidak punya bukti deterministik → `null`.
+- Sumber bukti: `text_content` (text), `bank_korban` (financial), `kronologi_user`/`tindakan_pelaku`/`jenis_data` dengan fallback OJK `157` untuk kategori perbankan/kartu (data-breach), serta profil/tag GetContact (phone). Endpoint image tidak punya bukti deterministik → `null`.
 - Nilai `official_contact` dari LLM selalu ditimpa; bank di luar whitelist menghasilkan `null`.
 - Jika beberapa bank terdeteksi, dipilih yang paling cocok: alias sama persis → alias paling spesifik → alias terpanjang → kemunculan paling awal → nama terpendek.
 - `phone` selalu dikembalikan sebagai string.

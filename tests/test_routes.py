@@ -128,6 +128,43 @@ def test_data_breach_emergency_has_no_contact(client, fake_openrouter):
     assert body["ai_kronologi"].startswith("I. DATA PELAPOR")
 
 
+def test_data_breach_emergency_extracts_bank_from_kronologi(client, fake_openrouter):
+    form = dict(
+        BREACH_FORM,
+        jenis_data="Akun perbankan / finansial",
+        kronologi_user="Pelaku meminta OTP BCA mobile saya melalui WhatsApp.",
+    )
+    response = client.post(
+        "/api/v1/emergency/data-breach",
+        data=form,
+        files={"bukti_percakapan": ("bukti.png", make_png(), "image/png")},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["official_contact"]["name"] == "Bank BCA (Bank Central Asia)"
+    assert body["official_contact"]["phone"] == "1500888"
+
+
+def test_data_breach_emergency_falls_back_to_ojk_for_banking_or_card(
+    client, fake_openrouter
+):
+    form = dict(
+        BREACH_FORM,
+        jenis_data="Akun perbankan / finansial",
+    )
+    response = client.post(
+        "/api/v1/emergency/data-breach",
+        data=form,
+        files={"bukti_percakapan": ("bukti.png", make_png(), "image/png")},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["official_contact"]["name"] == "Otoritas Jasa Keuangan (OJK)"
+    assert body["official_contact"]["phone"] == "157"
+
+
 def test_financial_emergency_requires_evidence(client, fake_openrouter):
     response = client.post("/api/v1/emergency/financial", data=FINANCIAL_FORM)
     assert response.status_code == 422

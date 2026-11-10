@@ -81,7 +81,7 @@ app/
     ai_service.py    # OpenRouter (threadpool), KB injection, chunked streaming gambar, MOCK_MODE
     phone_service.py # GetContact (threadpool) + in-memory cache (100 nomor, 24 jam) + enrichment + MOCK_MODE
   data/              # JSON bank, knowledge base, kredensial (lokal)
-tests/               # 70 test, tanpa jaringan (unit, route, auth, CORS, log, stream, KB, cache, mock mode)
+tests/               # 72 test, tanpa jaringan (unit, route, auth, CORS, log, stream, KB, cache, mock mode)
 eval/                # skrip evaluasi Fase 2 (evaluate_phase2.py); eval/data/ di-ignore Git
 ```
 
@@ -225,7 +225,7 @@ Bagian ini merangkum pengujian fungsional otomatis, verifikasi respons negatif H
 
 ### 1. Pengujian
 
-Pengujian mencakup **70 skenario uji** tanpa ketergantungan jaringan eksternal (OpenRouter dan GetContact di-mock):
+Pengujian mencakup **72 skenario uji** tanpa ketergantungan jaringan eksternal (OpenRouter dan GetContact di-mock):
 
 ```powershell
 venv\Scripts\pip.exe install -r requirements-dev.txt

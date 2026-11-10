@@ -209,6 +209,9 @@ def test_process_emergency_encapsulates_user_input_and_separates_roles(monkeypat
 
     assert len(captured_messages) == 2
     assert captured_messages[0]["role"] == "system"
+    assert "UNTRUSTED DATA ENCAPSULATION" in captured_messages[0]["content"]
+    assert "POINT OF VIEW (POV) SEPARATION" in captured_messages[0]["content"]
+    assert "NEVER use Malay vocabulary" in captured_messages[0]["content"]
     assert captured_messages[1]["role"] == "user"
     user_text = captured_messages[1]["content"][0]["text"]
     assert "<untrusted_evidence>" in user_text

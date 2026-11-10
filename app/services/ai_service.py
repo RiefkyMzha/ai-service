@@ -218,6 +218,44 @@ class AIService:
         result["official_contact"] = self.data_loader.official_contact_for(user_text)
         return result
 
+    def _resolve_emergency_contact(
+        self,
+        incident_data: Dict[str, Any],
+        is_financial: bool,
+    ) -> dict[str, str] | None:
+        if is_financial:
+            bank_hint = incident_data.get("bank_korban")
+            return (
+                self.data_loader.official_contact_for(str(bank_hint))
+                if bank_hint
+                else None
+            )
+
+        search_fields = (
+            str(incident_data.get("kronologi_user") or ""),
+            str(incident_data.get("tindakan_pelaku") or ""),
+            str(incident_data.get("jenis_data") or ""),
+        )
+        matched_contact = self.data_loader.official_contact_for(*search_fields)
+        if matched_contact is not None:
+            return matched_contact
+
+        combined_lower = " ".join(search_fields).lower()
+        financial_breach_keywords = (
+            "perbankan",
+            "finansial",
+            "kartu",
+            "rekening",
+            "m-banking",
+            "mbanking",
+            "kredit",
+            "debit",
+        )
+        if any(kw in combined_lower for kw in financial_breach_keywords):
+            return self.data_loader.official_contact_for("OJK")
+
+        return None
+
     async def process_emergency(
         self,
         incident_data: Dict[str, Any],
@@ -277,11 +315,8 @@ class AIService:
                 ],
             }
             mock_emergency = normalize_analysis_result(mock_emergency)
-            bank_hint = incident_data.get("bank_korban") if is_financial else None
-            mock_emergency["official_contact"] = (
-                self.data_loader.official_contact_for(str(bank_hint))
-                if bank_hint
-                else None
+            mock_emergency["official_contact"] = self._resolve_emergency_contact(
+                incident_data, is_financial
             )
             return mock_emergency
 
@@ -299,11 +334,7 @@ class AIService:
             ) from err
 
         result = normalize_analysis_result(result)
-
-        bank_hint = incident_data.get("bank_korban") if is_financial else None
-        result["official_contact"] = (
-            self.data_loader.official_contact_for(str(bank_hint))
-            if bank_hint
-            else None
+        result["official_contact"] = self._resolve_emergency_contact(
+            incident_data, is_financial
         )
         return result
