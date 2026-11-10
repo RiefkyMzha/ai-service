@@ -205,9 +205,9 @@ Respons `200`:
 
 ```json
 {
-  "ai_kronologi": "I. DATA PELAPOR (KORBAN)\n- Platform / Kanal Kejadian: WhatsApp\n- Waktu Kejadian: 2026-10-27\n\nII. DATA TERLAPOR (PELAKU)\n- Nama Institusi / Pengakuan Pelaku: Tidak disebutkan\n- Rekening / Kontak Pelaku: 1234567890\n\nIII. RINCIAN KRONOLOGI KEJADIAN\n1. Korban mentransfer dana.\n2. Barang tidak dikirim.",
+  "ai_kronologi": "I. DATA PELAPOR (KORBAN)\n- Platform Kejadian: WhatsApp\n- Waktu Kejadian: 2026-10-27\n- Bank / Akun Korban: BCA\n- Nominal Kerugian: Rp 1.500.000,00\n\nII. DATA TERLAPOR (PELAKU)\n- Bank / Institusi & Nama Pelaku: Tidak disebutkan\n- Nomor Rekening Pelaku: 1234567890\n\nIII. RINCIAN KRONOLOGI KEJADIAN\n1. Korban mentransfer dana.\n2. Barang tidak dikirim.",
   "langkah_penanganan": [
-    { "title": "Hubungi Call Center Bank", "description": "Minta pembekuan transaksi." }
+    { "title": "Hubungi Call Center Bank Pengirim", "description": "Segera hubungi call center bank Anda untuk melaporkan transaksi mencurigakan." }
   ],
   "official_contact": {
     "name": "Bank BCA (Bank Central Asia)",
@@ -286,9 +286,9 @@ Contoh:
 
 - **Panduan implementasi tim web:** lihat [`panduan_implementasi.md`](panduan_implementasi.md) untuk arsitektur komunikasi dengan tim web dan kajian opsi teknologi web.
 - **Mode Mock (`MOCK_MODE=true`):** saat mengembangkan dan menguji integrasi di lokal, backend utama dapat menyalakan `MOCK_MODE=true` di `.env` AI Service agar seluruh endpoint mengembalikan respons simulasi sesuai skema dalam < 50 ms tanpa memerlukan `OPENROUTER_API_KEY` maupun `gtc_credentials.json` (autentikasi `X-API-Token`, validasi input, dan `official_contact` tetap aktif 100%).
-- **Timeout:** siapkan timeout ≥ 90 detik pada Mode Live (`MOCK_MODE=false`). Server memakai 25 detik untuk GetContact dan 60 detik untuk AI.
+- **Timeout:** siapkan timeout ≥ 90 detik pada Mode Live (`MOCK_MODE=false`). Server memakai 25 detik untuk GetContact dan 85 detik untuk AI.
 - **Retry:** jangan retry otomatis pada `408`/`502`; setiap POST memanggil LLM dan mengonsumsi kuota.
 - **Null handling:** perlakukan `scam_type`, `official_contact`, dan `official_contact.whatsapp` sebagai opsional.
 - **Non-determinisme:** skor dan redaksi dapat berbeda antar pemanggilan meski input sama.
-- **Idempotensi:** endpoint bukan idempotent; tidak ada cache atau penyimpanan hasil.
+- **Caching & Penyimpanan:** layanan tidak menyimpan riwayat ke database; hanya `/api/v1/analyze/phone` yang memiliki *in-memory LRU+TTL cache* (maks. 100 nomor selama 24 jam) untuk menghemat kuota GetContact.
 - **Privasi:** gambar dan teks dikirim ke OpenRouter (pihak ketiga) untuk analisis pada Mode Live.

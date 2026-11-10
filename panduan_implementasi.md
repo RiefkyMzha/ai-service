@@ -44,7 +44,7 @@ Dokumen ini disusun sebagai panduan dan rujukan teknis operasional (*runbook & i
    - AI Service bersifat murni *stateless* (tidak memiliki tabel database dan tidak membuat file PDF).
    - Penyimpanan riwayat pengecekan pengguna ke database utama serta pembuatan dokumen/sertifikat laporan merupakan tanggung jawab **backend utama aplikasi web**.
 3. **Pengaturan Timeout ($\ge 90$ Detik) & Larangan Auto-Retry:**
-   - Pada saat mode AI aktif (*Live Mode*), proses inferensi multimodal LLM membutuhkan waktu rata-rata **14 hingga 30 detik** (dengan batas maksimal 60 detik).
+   - Pada saat mode AI aktif (*Live Mode*), proses inferensi multimodal LLM membutuhkan waktu rata-rata **14 hingga 35 detik** (dengan batas maksimal 85 detik di server AI).
    - Pengembang web **wajib mengatur batas waktu tunggu (*HTTP request timeout*) minimal 90 detik** pada klien HTTP, serta **tidak memasang fitur *auto-retry*** pada error `408`/`502` agar satu klik pengguna tidak memicu pemanggilan ganda ke mesin AI.
 
 ---
@@ -282,7 +282,7 @@ Jika pemanggilan API menghasilkan kode status HTTP bukan `200`, tangani dan samp
 |---|---|---|
 | **`400 Bad Request`** | Format file bukan gambar yang didukung | *"File yang diunggah harus berformat gambar (JPG, PNG, atau WEBP)."* |
 | **`401 Unauthorized`** | Header `X-API-Token` salah atau tidak dikirim | *(Internal error / laporkan ke tim teknis)* *"Autentikasi layanan gagal."* |
-| **`408 Request Timeout`** | Pemrosesan AI melebihi batas waktu 60 detik | *"Waktu pemrosesan habis. Silakan periksa koneksi dan coba beberapa saat lagi."* |
+| **`408 Request Timeout`** | Pemrosesan AI melebihi batas waktu 85 detik | *"Waktu pemrosesan habis. Silakan periksa koneksi dan coba beberapa saat lagi."* |
 | **`413 Payload Too Large`** | Ukuran file gambar melebihi batas 15 MB | *"Ukuran gambar terlalu besar. Maksimal ukuran gambar adalah 15 MB."* |
 | **`422 Unprocessable Entity`** | Field wajib kosong atau format nomor salah | Tampilkan detail validasi, misal: *"Nomor telepon tidak valid (contoh: 081234567890)."* |
 | **`500 Internal Error`** | Kesalahan konfigurasi server AI | *"Terjadi gangguan internal pada sistem AI. Silakan hubungi admin."* |
