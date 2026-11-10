@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import base64
@@ -5,6 +6,7 @@ import hashlib
 import hmac
 import re
 import time
+from collections import OrderedDict
 import requests
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from pathlib import Path
@@ -25,10 +27,32 @@ ANDROID_OS = "android 9"
 LANG = "en_US"
 COUNTRY = "id"
 
+PHONE_CACHE_MAX_SIZE = 100
+PHONE_CACHE_TTL_SECONDS = 86400
+_PHONE_CACHE: OrderedDict[str, Tuple[float, dict[str, Any]]] = OrderedDict()
+
 def _mask_phone(number: str) -> str:
     if len(number) <= 7:
         return "*" * len(number)
     return number[:5] + "*" * (len(number) - 7) + number[-2:]
+
+
+def _get_cached_phone_result(cache_key: str) -> dict[str, Any] | None:
+    if cache_key not in _PHONE_CACHE:
+        return None
+    ts, val = _PHONE_CACHE[cache_key]
+    if time.monotonic() - ts > PHONE_CACHE_TTL_SECONDS:
+        del _PHONE_CACHE[cache_key]
+        return None
+    _PHONE_CACHE.move_to_end(cache_key)
+    return copy.deepcopy(val)
+
+
+def _set_cached_phone_result(cache_key: str, val: dict[str, Any]) -> None:
+    _PHONE_CACHE[cache_key] = (time.monotonic(), copy.deepcopy(val))
+    _PHONE_CACHE.move_to_end(cache_key)
+    if len(_PHONE_CACHE) > PHONE_CACHE_MAX_SIZE:
+        _PHONE_CACHE.popitem(last=False)
 
 
 class PhoneService:
@@ -154,6 +178,12 @@ class PhoneService:
             }
             return normalize_analysis_result(mock_phone_result)
 
+        cache_key = hashlib.sha256(normalized_phone.encode("utf-8")).hexdigest()
+        cached_result = _get_cached_phone_result(cache_key)
+        if cached_result is not None:
+            logger.info("Cache hit analisis untuk nomor: %s", _mask_phone(normalized_phone))
+            return cached_result
+
         cred = self._get_active_cred()
         payload = {
             "countryCode": COUNTRY,
@@ -206,4 +236,11 @@ class PhoneService:
         result["official_contact"] = self.ai_service.data_loader.official_contact_for(
             gtc_context
         )
+
+        display_name = gtc_profile.get("displayName") if isinstance(gtc_profile, dict) else None
+        has_profile_name = isinstance(display_name, str) and bool(display_name.strip())
+        has_tags = isinstance(gtc_tags, list) and len(gtc_tags) > 0
+        if has_profile_name or has_tags:
+            _set_cached_phone_result(cache_key, result)
+
         return result

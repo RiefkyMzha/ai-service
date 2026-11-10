@@ -8,7 +8,12 @@ from fastapi import HTTPException
 
 from app.core.data_loader import DataLoader
 from app.services.ai_service import AIService
-from app.services.phone_service import PhoneService
+from app.services.phone_service import (
+    PHONE_CACHE_MAX_SIZE,
+    PHONE_CACHE_TTL_SECONDS,
+    PhoneService,
+    _PHONE_CACHE,
+)
 
 VALID_CRED = {
     "token": "token-uji",
@@ -30,6 +35,13 @@ ANALYSIS_JSON = json.dumps(
 
 def run(coro):
     return asyncio.run(coro)
+
+
+@pytest.fixture(autouse=True)
+def clear_phone_cache():
+    _PHONE_CACHE.clear()
+    yield
+    _PHONE_CACHE.clear()
 
 
 @pytest.fixture
@@ -261,3 +273,101 @@ def test_analyze_phone_encapsulates_context_and_separates_roles(monkeypatch, ser
     assert captured[1]["role"] == "user"
     assert "<untrusted_evidence>" in captured[1]["content"]
     assert "TARGET PHONE NUMBER: +6281234567890" in captured[1]["content"]
+
+
+def test_analyze_phone_uses_cache_across_formats(monkeypatch, caplog, service: PhoneService):
+    gtc_calls = 0
+    llm_calls = 0
+
+    def fake_gtc(self, endpoint, payload, cred):
+        nonlocal gtc_calls
+        gtc_calls += 1
+        return 200, {"result": {"profile": {"displayName": "CS Bank BCA"}, "tags": []}}
+
+    async def fake_llm(self, messages):
+        nonlocal llm_calls
+        llm_calls += 1
+        return ANALYSIS_JSON
+
+    monkeypatch.setattr(PhoneService, "_get_active_cred", lambda self: VALID_CRED)
+    monkeypatch.setattr(PhoneService, "_gtc_call", fake_gtc)
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_llm)
+    caplog.set_level(logging.INFO)
+
+    first = run(service.analyze_phone_number("0812-3456-7890"))
+    second = run(service.analyze_phone_number("+62 812 3456 7890"))
+
+    assert gtc_calls == 1
+    assert llm_calls == 1
+    assert first == second
+    assert "Cache hit analisis untuk nomor: +6281*******90" in caplog.text
+
+
+def test_analyze_phone_cache_expires_after_24h(monkeypatch, service: PhoneService):
+    gtc_calls = 0
+    fake_now = 1000.0
+
+    def fake_gtc(self, endpoint, payload, cred):
+        nonlocal gtc_calls
+        gtc_calls += 1
+        return 200, {"result": {"profile": {"displayName": "Kak Depi"}, "tags": []}}
+
+    async def fake_llm(self, messages):
+        return ANALYSIS_JSON
+
+    monkeypatch.setattr(PhoneService, "_get_active_cred", lambda self: VALID_CRED)
+    monkeypatch.setattr(PhoneService, "_gtc_call", fake_gtc)
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_llm)
+    monkeypatch.setattr("app.services.phone_service.time.monotonic", lambda: fake_now)
+
+    run(service.analyze_phone_number("081234567890"))
+    assert gtc_calls == 1
+
+    fake_now += PHONE_CACHE_TTL_SECONDS + 1
+    run(service.analyze_phone_number("081234567890"))
+    assert gtc_calls == 2
+
+
+def test_analyze_phone_cache_evicts_lru_above_100(monkeypatch, service: PhoneService):
+    monkeypatch.setattr(PhoneService, "_get_active_cred", lambda self: VALID_CRED)
+    monkeypatch.setattr(
+        PhoneService,
+        "_gtc_call",
+        lambda self, endpoint, payload, cred: (
+            200,
+            {"result": {"profile": {"displayName": "User"}, "tags": []}},
+        ),
+    )
+
+    async def fake_llm(self, messages):
+        return ANALYSIS_JSON
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_llm)
+
+    for i in range(PHONE_CACHE_MAX_SIZE + 5):
+        run(service.analyze_phone_number(f"0812{i:08d}"))
+
+    assert len(_PHONE_CACHE) == PHONE_CACHE_MAX_SIZE
+
+
+def test_analyze_phone_does_not_cache_empty_gtc_result(monkeypatch, service: PhoneService):
+    gtc_calls = 0
+
+    def fake_empty_gtc(self, endpoint, payload, cred):
+        nonlocal gtc_calls
+        gtc_calls += 1
+        return 200, {"result": {"profile": {}, "tags": []}}
+
+    async def fake_llm(self, messages):
+        return ANALYSIS_JSON
+
+    monkeypatch.setattr(PhoneService, "_get_active_cred", lambda self: VALID_CRED)
+    monkeypatch.setattr(PhoneService, "_gtc_call", fake_empty_gtc)
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_llm)
+
+    run(service.analyze_phone_number("081234567890"))
+    run(service.analyze_phone_number("081234567890"))
+
+    assert gtc_calls == 2
+    assert len(_PHONE_CACHE) == 0
+

@@ -79,9 +79,9 @@ app/
   schemas/payload.py # response model + validasi nomor telepon
   services/
     ai_service.py    # OpenRouter (threadpool), KB injection, chunked streaming gambar, MOCK_MODE
-    phone_service.py # GetContact (threadpool) + enrichment + MOCK_MODE
+    phone_service.py # GetContact (threadpool) + in-memory cache (100 nomor, 24 jam) + enrichment + MOCK_MODE
   data/              # JSON bank, knowledge base, kredensial (lokal)
-tests/               # 66 test, tanpa jaringan (unit, route, auth, CORS, log, stream, KB, mock mode)
+tests/               # 70 test, tanpa jaringan (unit, route, auth, CORS, log, stream, KB, cache, mock mode)
 eval/                # skrip evaluasi Fase 2 (evaluate_phase2.py); eval/data/ di-ignore Git
 ```
 
@@ -225,7 +225,7 @@ Bagian ini merangkum pengujian fungsional otomatis, verifikasi respons negatif H
 
 ### 1. Pengujian
 
-Pengujian mencakup **66 skenario uji** tanpa ketergantungan jaringan eksternal (OpenRouter dan GetContact di-mock):
+Pengujian mencakup **70 skenario uji** tanpa ketergantungan jaringan eksternal (OpenRouter dan GetContact di-mock):
 
 ```powershell
 venv\Scripts\pip.exe install -r requirements-dev.txt
@@ -236,7 +236,7 @@ venv\Scripts\python.exe -m pytest
 |---|---|
 | `tests/test_data_loader.py` | Ranking alias bank, URL/karakter khusus, alias manual, data hilang, dan pencocokan Knowledge Base (`min_keywords=3`) |
 | `tests/test_ai_service.py` | Validasi API key kosong, timeout handling, error 401, parsing JSON cacat, filter MIME/ukuran gambar, dan override kontak bank |
-| `tests/test_phone_service.py` | Kredensial GetContact hilang/rusak/tidak lengkap, penanganan sesi 401, sanitasi PII log, dan enrichment kontak |
+| `tests/test_phone_service.py` | Kredensial GetContact hilang/rusak/tidak lengkap, penanganan sesi 401, sanitasi PII log, in-memory cache (100 nomor, 24 jam), dan enrichment kontak |
 | `tests/test_routes.py` | Pengujian 5 rute bisnis, validasi error 400/413/422, penimpaan kontak palsu, dan simulasi mode `MOCK_MODE=true` |
 | `tests/test_auth.py` | Autentikasi `X-API-Token`, penolakan 401 token salah/tanpa header, fail-closed 500, preflight CORS, dan endpoint `/health` |
 
