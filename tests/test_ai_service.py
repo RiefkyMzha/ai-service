@@ -212,10 +212,15 @@ def test_process_emergency_encapsulates_user_input_and_separates_roles(monkeypat
     assert "UNTRUSTED DATA ENCAPSULATION" in captured_messages[0]["content"]
     assert "POINT OF VIEW (POV) SEPARATION" in captured_messages[0]["content"]
     assert "NEVER use Malay vocabulary" in captured_messages[0]["content"]
+    assert "Nominal Kerugian" in captured_messages[0]["content"]
     assert captured_messages[1]["role"] == "user"
     user_text = captured_messages[1]["content"][0]["text"]
     assert "<untrusted_evidence>" in user_text
     assert "- bank_korban: BCA" in user_text
+
+    run(service.process_emergency({"jenis_data": "Email", "status_akses": "Hilang"}, None, is_financial=False))
+    assert "Jenis Data Terdampak" in captured_messages[0]["content"]
+    assert "Status Akses Saat Ini" in captured_messages[0]["content"]
 
 
 def test_openrouter_model_configurable_and_logs_latency(

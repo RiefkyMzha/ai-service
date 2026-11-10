@@ -11,7 +11,12 @@ from starlette.concurrency import run_in_threadpool
 from app.core.config import settings
 from app.core.data_loader import DataLoader
 from app.core.normalization import normalize_analysis_result
-from app.core.prompts import EMERGENCY_PROMPT, REASONING_PROMPT, VISION_PROMPT
+from app.core.prompts import (
+    DATA_BREACH_EMERGENCY_PROMPT,
+    FINANCIAL_EMERGENCY_PROMPT,
+    REASONING_PROMPT,
+    VISION_PROMPT,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +28,7 @@ class AIService:
     def __init__(self, data_loader: DataLoader) -> None:
         self.api_url = settings.OPENROUTER_BASE_URL
         self.model = settings.OPENROUTER_MODEL
-        self.timeout = 60
+        self.timeout = 85
         self.data_loader = data_loader
 
     async def _process_image_to_base64(self, file: UploadFile | None) -> str | None:
@@ -290,8 +295,14 @@ class AIService:
                 }
             )
 
+        system_prompt = (
+            FINANCIAL_EMERGENCY_PROMPT
+            if is_financial
+            else DATA_BREACH_EMERGENCY_PROMPT
+        )
+
         messages = [
-            {"role": "system", "content": EMERGENCY_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content},
         ]
 
