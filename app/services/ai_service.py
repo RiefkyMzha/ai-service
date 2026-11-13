@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 import requests
 from fastapi import HTTPException, UploadFile
+from pydantic import BaseModel, ValidationError
 from starlette.concurrency import run_in_threadpool
 
 from app.core.config import settings
@@ -17,11 +18,72 @@ from app.core.prompts import (
     REASONING_PROMPT,
     VISION_PROMPT,
 )
+from app.schemas.payload import AnalysisResponse, EmergencyResponse
 
 logger = logging.getLogger(__name__)
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
 MAX_IMAGE_BYTES = 15 * 1024 * 1024
+_MAX_OFFICIAL_CONTACTS = 3
+_NON_BANK_AI_SCAN_EXCLUSIONS = {"Otoritas Jasa Keuangan (OJK)"}
+
+
+def parse_ai_json(raw_result: Any, context: str) -> dict[str, Any]:
+    if not isinstance(raw_result, str):
+        logger.error(
+            "Gagal parse JSON %s (tipe output: %s).",
+            context,
+            type(raw_result).__name__,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Format output AI cacat.",
+        )
+
+    try:
+        result = json.loads(raw_result)
+        if not isinstance(result, dict):
+            raise ValueError("Output AI bukan object JSON.")
+        return result
+    except (json.JSONDecodeError, ValueError) as err:
+        logger.error("Gagal parse JSON %s (panjang output: %d).", context, len(raw_result))
+        raise HTTPException(
+            status_code=500,
+            detail="Format output AI cacat.",
+        ) from err
+
+
+def finalize_ai_result(
+    result: Dict[str, Any],
+    contacts: list[dict[str, str]],
+    schema: type[BaseModel],
+    context: str,
+) -> dict[str, Any]:
+    result["official_contacts"] = contacts
+    result["official_contact"] = contacts[0] if contacts else None
+
+    try:
+        validated = schema.model_validate(result)
+    except ValidationError as err:
+        fields = ", ".join(
+            ".".join(str(part) for part in item["loc"])
+            for item in err.errors()
+        )
+        logger.error(
+            "Validasi skema output AI %s gagal (%d error; field: %s).",
+            context,
+            err.error_count(),
+            fields or "-",
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Format output AI cacat.",
+        ) from err
+
+    normalized = validated.model_dump()
+    normalized["official_contacts"] = contacts
+    normalized["official_contact"] = contacts[0] if contacts else None
+    return normalized
 
 
 class AIService:
@@ -88,7 +150,10 @@ class AIService:
         )
         resp.raise_for_status()
         data = resp.json()
-        return data["choices"][0]["message"]["content"]
+        content = data["choices"][0]["message"]["content"]
+        if not isinstance(content, str):
+            raise ValueError("Konten respons AI bukan string.")
+        return content
 
     async def _call_openrouter(self, messages: list[dict[str, Any]]) -> str:
         if not settings.OPENROUTER_API_KEY:
@@ -130,7 +195,7 @@ class AIService:
                 detail="Gagal terhubung ke layanan AI.",
             ) from err
 
-        except (KeyError, IndexError, ValueError) as err:
+        except (KeyError, IndexError, ValueError, TypeError) as err:
             raise HTTPException(
                 status_code=500,
                 detail="Respons AI tidak valid.",
@@ -185,7 +250,9 @@ class AIService:
                 ],
             }
             mock_result = normalize_analysis_result(mock_result)
-            mock_result["official_contact"] = self.data_loader.official_contact_for(user_text)
+            contacts = self._resolve_analysis_contacts(user_text, image_url, mock_result)
+            mock_result["official_contacts"] = contacts
+            mock_result["official_contact"] = contacts[0] if contacts else None
             return mock_result
 
         user_content: list[dict[str, Any]] = [
@@ -208,44 +275,88 @@ class AIService:
             {"role": "user", "content": user_content},
         ]
         raw_result = await self._call_openrouter(messages)
-
-        try:
-            result = json.loads(raw_result)
-            if not isinstance(result, dict):
-                raise ValueError("Output AI bukan object JSON.")
-        except (json.JSONDecodeError, ValueError) as err:
-            raise HTTPException(
-                status_code=500,
-                detail="Format output AI cacat.",
-            ) from err
-
+        result = parse_ai_json(raw_result, "analisis")
         result = normalize_analysis_result(result)
-        result["official_contact"] = self.data_loader.official_contact_for(user_text)
-        return result
+        contacts = self._resolve_analysis_contacts(user_text, image_url, result)
+        return finalize_ai_result(result, contacts, AnalysisResponse, "analisis")
 
-    def _resolve_emergency_contact(
+    @staticmethod
+    def _merge_contacts(*contact_lists: list[dict[str, str]]) -> list[dict[str, str]]:
+        merged: list[dict[str, str]] = []
+        seen_names: set[str] = set()
+        for items in contact_lists:
+            for item in items:
+                name = item.get("name", "")
+                if not name or name in seen_names:
+                    continue
+                seen_names.add(name)
+                merged.append(item)
+                if len(merged) >= _MAX_OFFICIAL_CONTACTS:
+                    return merged
+        return merged
+
+    def _resolve_analysis_contacts(
+        self,
+        user_text: str,
+        image_url: str | None,
+        result: Dict[str, Any],
+    ) -> list[dict[str, str]]:
+        user_contacts = self.data_loader.official_contacts_for(
+            user_text, limit=_MAX_OFFICIAL_CONTACTS
+        )
+        if not image_url or len(user_contacts) >= _MAX_OFFICIAL_CONTACTS:
+            return user_contacts
+        reasons = result.get("reasons")
+        if isinstance(reasons, list) and reasons:
+            reason_contacts = self.data_loader.official_contacts_for(
+                *(str(item) for item in reasons if item),
+                limit=_MAX_OFFICIAL_CONTACTS,
+                exclude_names=_NON_BANK_AI_SCAN_EXCLUSIONS,
+            )
+            return self._merge_contacts(user_contacts, reason_contacts)
+        return user_contacts
+
+    def _resolve_emergency_contacts(
         self,
         incident_data: Dict[str, Any],
         is_financial: bool,
-    ) -> dict[str, str] | None:
-        if is_financial:
-            bank_hint = incident_data.get("bank_korban")
-            return (
-                self.data_loader.official_contact_for(str(bank_hint))
-                if bank_hint
-                else None
+        ai_kronologi: str = "",
+    ) -> list[dict[str, str]]:
+        ai_contacts = (
+            self.data_loader.official_contacts_for(
+                ai_kronologi,
+                limit=_MAX_OFFICIAL_CONTACTS,
+                exclude_names=_NON_BANK_AI_SCAN_EXCLUSIONS,
             )
+            if ai_kronologi and ai_kronologi.strip()
+            else []
+        )
+
+        if is_financial:
+            user_contacts = self.data_loader.official_contacts_for(
+                str(incident_data.get("bank_korban") or ""),
+                str(incident_data.get("nama_institusi_penipu") or ""),
+                str(incident_data.get("kronologi_user") or ""),
+                limit=_MAX_OFFICIAL_CONTACTS,
+                exclude_names=_NON_BANK_AI_SCAN_EXCLUSIONS,
+            )
+            return self._merge_contacts(user_contacts, ai_contacts)
 
         search_fields = (
             str(incident_data.get("kronologi_user") or ""),
             str(incident_data.get("tindakan_pelaku") or ""),
             str(incident_data.get("jenis_data") or ""),
         )
-        matched_contact = self.data_loader.official_contact_for(*search_fields)
-        if matched_contact is not None:
-            return matched_contact
+        form_contacts = self.data_loader.official_contacts_for(
+            *search_fields,
+            limit=_MAX_OFFICIAL_CONTACTS,
+            exclude_names=_NON_BANK_AI_SCAN_EXCLUSIONS,
+        )
+        merged = self._merge_contacts(form_contacts, ai_contacts)
+        if merged:
+            return merged
 
-        combined_lower = " ".join(search_fields).lower()
+        combined_lower = " ".join((*search_fields, ai_kronologi or "")).lower()
         financial_breach_keywords = (
             "perbankan",
             "finansial",
@@ -257,9 +368,10 @@ class AIService:
             "debit",
         )
         if any(kw in combined_lower for kw in financial_breach_keywords):
-            return self.data_loader.official_contact_for("OJK")
+            ojk = self.data_loader.official_contact_for("OJK")
+            return [ojk] if ojk else []
 
-        return None
+        return []
 
     async def process_emergency(
         self,
@@ -326,26 +438,21 @@ class AIService:
                 ],
             }
             mock_emergency = normalize_analysis_result(mock_emergency)
-            mock_emergency["official_contact"] = self._resolve_emergency_contact(
-                incident_data, is_financial
+            contacts = self._resolve_emergency_contacts(
+                incident_data,
+                is_financial,
+                ai_kronologi=str(mock_emergency.get("ai_kronologi") or ""),
             )
+            mock_emergency["official_contacts"] = contacts
+            mock_emergency["official_contact"] = contacts[0] if contacts else None
             return mock_emergency
 
         raw_result = await self._call_openrouter(messages)
-
-        try:
-            result = json.loads(raw_result)
-            if not isinstance(result, dict):
-                raise ValueError("Output AI bukan object JSON.")
-        except (json.JSONDecodeError, ValueError) as err:
-            logger.error("Gagal parse JSON darurat (panjang output: %d).", len(raw_result))
-            raise HTTPException(
-                status_code=500,
-                detail="Format output AI cacat.",
-            ) from err
-
+        result = parse_ai_json(raw_result, "darurat")
         result = normalize_analysis_result(result)
-        result["official_contact"] = self._resolve_emergency_contact(
-            incident_data, is_financial
+        contacts = self._resolve_emergency_contacts(
+            incident_data,
+            is_financial,
+            ai_kronologi=str(result.get("ai_kronologi") or ""),
         )
-        return result
+        return finalize_ai_result(result, contacts, EmergencyResponse, "darurat")

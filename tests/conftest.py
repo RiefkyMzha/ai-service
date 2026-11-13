@@ -63,6 +63,11 @@ def make_upload(
     )
 
 
+@pytest.fixture(autouse=True)
+def reset_test_settings(monkeypatch):
+    monkeypatch.setattr(settings, "MOCK_MODE", False)
+
+
 @pytest.fixture
 def client(monkeypatch) -> TestClient:
     monkeypatch.setattr(settings, "CEGAHSCAM_API_TOKEN", TEST_API_TOKEN)

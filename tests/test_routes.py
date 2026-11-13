@@ -16,6 +16,7 @@ BREACH_FORM = {
     "platform_kejadian": "Instagram",
     "tindakan_pelaku": "Meminta OTP",
     "status_akses": "Masih bisa diakses",
+    "kronologi_user": "Akun saya dihubungi pihak mengaku CS dan meminta OTP.",
 }
 
 
@@ -170,6 +171,44 @@ def test_financial_emergency_requires_evidence(client, fake_openrouter):
     assert response.status_code == 422
 
 
+def test_financial_emergency_requires_kronologi_user(client, fake_openrouter):
+    form = {k: v for k, v in FINANCIAL_FORM.items() if k != "kronologi_user"}
+    response = client.post(
+        "/api/v1/emergency/financial",
+        data=form,
+        files={"bukti_transfer": ("bukti.png", make_png(), "image/png")},
+    )
+    assert response.status_code == 422
+
+
+def test_data_breach_emergency_requires_kronologi_user(client, fake_openrouter):
+    form = {k: v for k, v in BREACH_FORM.items() if k != "kronologi_user"}
+    response = client.post(
+        "/api/v1/emergency/data-breach",
+        data=form,
+        files={"bukti_percakapan": ("bukti.png", make_png(), "image/png")},
+    )
+    assert response.status_code == 422
+
+
+def test_emergency_kronologi_user_length_limits(client, fake_openrouter):
+    overlong_form = dict(FINANCIAL_FORM, kronologi_user="x" * 10_001)
+    res_overlong = client.post(
+        "/api/v1/emergency/financial",
+        data=overlong_form,
+        files={"bukti_transfer": ("bukti.png", make_png(), "image/png")},
+    )
+    assert res_overlong.status_code == 422
+
+    max_len_form = dict(FINANCIAL_FORM, kronologi_user="x" * 10_000)
+    res_max = client.post(
+        "/api/v1/emergency/financial",
+        data=max_len_form,
+        files={"bukti_transfer": ("bukti.png", make_png(), "image/png")},
+    )
+    assert res_max.status_code == 200
+
+
 def test_mock_mode_endpoints_work_without_upstream(client, monkeypatch):
     from app.core.config import settings
 
@@ -198,3 +237,285 @@ def test_mock_mode_endpoints_work_without_upstream(client, monkeypatch):
     )
     assert res_emg.status_code == 200
     assert res_emg.json()["official_contact"]["phone"] == "1500888"
+
+
+def test_data_breach_emergency_extracts_bank_from_ai_kronologi(client, monkeypatch):
+    import json
+    from app.services.ai_service import AIService
+
+    async def fake_call(self, messages):
+        return json.dumps(
+            {
+                "ai_kronologi": (
+                    "I. DATA PELAPOR (KORBAN)\n"
+                    "III. RINCIAN KRONOLOGI KEJADIAN\n"
+                    "1. Pelaku mengirim pesan WhatsApp mengatasnamakan BCA Official."
+                ),
+                "langkah_penanganan": [
+                    {
+                        "title": "Laporkan ke OJK",
+                        "description": "Hubungi OJK 157 untuk pelaporan.",
+                    }
+                ],
+            }
+        )
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_call)
+    form = dict(BREACH_FORM, jenis_data="Akun perbankan / finansial")
+    response = client.post(
+        "/api/v1/emergency/data-breach",
+        data=form,
+        files={"bukti_percakapan": ("bukti.png", make_png(), "image/png")},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["official_contact"]["name"] == "Bank BCA (Bank Central Asia)"
+    assert body["official_contact"]["phone"] == "1500888"
+
+
+def test_data_breach_emergency_user_input_overrides_ai_kronologi(client, monkeypatch):
+    import json
+    from app.services.ai_service import AIService
+
+    async def fake_call(self, messages):
+        return json.dumps(
+            {
+                "ai_kronologi": "Pelaku menyamar sebagai petugas BCA di tangkapan layar.",
+                "langkah_penanganan": [],
+            }
+        )
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_call)
+    form = dict(
+        BREACH_FORM,
+        jenis_data="Akun perbankan / finansial",
+        kronologi_user="Saya dihubungi penipu yang mengaku dari BRI.",
+    )
+    response = client.post(
+        "/api/v1/emergency/data-breach",
+        data=form,
+        files={"bukti_percakapan": ("bukti.png", make_png(), "image/png")},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["official_contact"]["name"] == "Bank BRI (Bank Rakyat Indonesia)"
+    assert body["official_contact"]["phone"] == "1500017"
+
+
+def test_data_breach_emergency_ignores_langkah_penanganan_for_bank_lookup(
+    client, monkeypatch
+):
+    import json
+    from app.services.ai_service import AIService
+
+    async def fake_call(self, messages):
+        return json.dumps(
+            {
+                "ai_kronologi": "Pelaku meminta kode OTP akun media sosial.",
+                "langkah_penanganan": [
+                    {
+                        "title": "Hubungi OJK atau Bank",
+                        "description": "Hubungi OJK 157 atau BCA jika terdampak.",
+                    }
+                ],
+            }
+        )
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_call)
+    response = client.post(
+        "/api/v1/emergency/data-breach",
+        data=BREACH_FORM,
+        files={"bukti_percakapan": ("bukti.png", make_png(), "image/png")},
+    )
+    assert response.status_code == 200
+    assert response.json()["official_contact"] is None
+
+
+def test_analyze_image_extracts_bank_from_reasons(client, monkeypatch):
+    import json
+    from app.services.ai_service import AIService
+
+    async def fake_call(self, messages):
+        return json.dumps(
+            {
+                "risk_score": 85,
+                "risk_category": "Tinggi",
+                "scam_type": "Phishing",
+                "reasons": [
+                    "Gambar menampilkan pesan palsu mengatasnamakan Bank Mandiri."
+                ],
+                "recommendations": [
+                    "Jangan klik tautan dan hubungi OJK 157 atau BCA jika perlu."
+                ],
+            }
+        )
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_call)
+    response = client.post(
+        "/api/v1/analyze/image",
+        data={"platform": "WhatsApp"},
+        files={"image": ("bukti.png", make_png(), "image/png")},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["official_contact"]["name"] == "Bank Mandiri"
+    assert body["official_contact"]["phone"] == "14000"
+    assert [c["name"] for c in body["official_contacts"]] == ["Bank Mandiri"]
+
+
+def test_financial_emergency_multi_bank_priority_and_cap(client, monkeypatch):
+    import json
+    from app.services.ai_service import AIService
+
+    async def fake_call(self, messages):
+        return json.dumps(
+            {
+                "ai_kronologi": (
+                    "Korban mentransfer dari Bank BCA melalui Bank Mandiri lalu BNI, "
+                    "dan diminta lapor ke OJK 157."
+                ),
+                "langkah_penanganan": [],
+            }
+        )
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_call)
+    form = dict(
+        FINANCIAL_FORM,
+        bank_korban="BCA",
+        nama_institusi_penipu="BRI",
+        kronologi_user="Transfer ke rekening penipu.",
+    )
+    response = client.post(
+        "/api/v1/emergency/financial",
+        data=form,
+        files={"bukti_transfer": ("bukti.png", make_png(), "image/png")},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["official_contact"]["name"] == "Bank BCA (Bank Central Asia)"
+    assert [c["name"] for c in body["official_contacts"]] == [
+        "Bank BCA (Bank Central Asia)",
+        "Bank BRI (Bank Rakyat Indonesia)",
+        "Bank Mandiri",
+    ]
+
+
+def test_data_breach_multi_bank_form_and_image_excludes_ojk(client, monkeypatch):
+    import json
+    from app.services.ai_service import AIService
+
+    async def fake_call(self, messages):
+        return json.dumps(
+            {
+                "ai_kronologi": (
+                    "Pelaku mengirim pesan dari BCA Official dan menyebut OJK 157."
+                ),
+                "langkah_penanganan": [],
+            }
+        )
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_call)
+    form = dict(
+        BREACH_FORM,
+        jenis_data="Akun perbankan / finansial",
+        kronologi_user="Saya dihubungi penipu yang mengaku dari BRI.",
+    )
+    response = client.post(
+        "/api/v1/emergency/data-breach",
+        data=form,
+        files={"bukti_percakapan": ("bukti.png", make_png(), "image/png")},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["official_contact"]["name"] == "Bank BRI (Bank Rakyat Indonesia)"
+    assert [c["name"] for c in body["official_contacts"]] == [
+        "Bank BRI (Bank Rakyat Indonesia)",
+        "Bank BCA (Bank Central Asia)",
+    ]
+
+
+def test_analyze_text_with_image_multi_bank(client, monkeypatch):
+    import json
+    from app.services.ai_service import AIService
+
+    async def fake_call(self, messages):
+        return json.dumps(
+            {
+                "risk_score": 90,
+                "risk_category": "Sangat Tinggi",
+                "scam_type": "Phishing",
+                "reasons": [
+                    "Screenshot menampilkan logo Bank Mandiri dan rujukan OJK 157."
+                ],
+                "recommendations": ["Hubungi bank resmi."],
+            }
+        )
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_call)
+    response = client.post(
+        "/api/v1/analyze/text",
+        data={"text_content": "Saya ditipu pelaku mengaku CS BCA."},
+        files={"image": ("bukti.png", make_png(), "image/png")},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["official_contact"]["name"] == "Bank BCA (Bank Central Asia)"
+    assert [c["name"] for c in body["official_contacts"]] == [
+        "Bank BCA (Bank Central Asia)",
+        "Bank Mandiri",
+    ]
+
+
+def test_data_breach_accepts_long_json_tindakan_pelaku(client, fake_openrouter):
+    import json
+
+    long_actions = json.dumps(
+        ["link", "data-pribadi", "otp", "menyamar", "x" * 300]
+    )
+    form = dict(BREACH_FORM, tindakan_pelaku=long_actions)
+    response = client.post(
+        "/api/v1/emergency/data-breach",
+        data=form,
+        files={"bukti_percakapan": ("bukti.png", make_png(), "image/png")},
+    )
+    assert response.status_code == 200
+
+
+def test_routes_return_json_500_when_llm_violates_schema(client, monkeypatch):
+    import json
+    from app.services.ai_service import AIService
+
+    async def fake_bad_analysis(self, messages):
+        return json.dumps(
+            {
+                "risk_score": 150,
+                "risk_category": "Tinggi",
+                "reasons": "bukan-list",
+                "recommendations": ["y"],
+            }
+        )
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_bad_analysis)
+    res_text = client.post(
+        "/api/v1/analyze/text",
+        data={"text_content": "Cek pesan mencurigakan."},
+    )
+    assert res_text.status_code == 500
+    assert res_text.json() == {"detail": "Format output AI cacat."}
+
+    async def fake_bad_emergency(self, messages):
+        return json.dumps(
+            {
+                "ai_kronologi": None,
+                "langkah_penanganan": ["bukan-object"],
+            }
+        )
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_bad_emergency)
+    res_emg = client.post(
+        "/api/v1/emergency/financial",
+        data=FINANCIAL_FORM,
+        files={"bukti_transfer": ("bukti.png", make_png(), "image/png")},
+    )
+    assert res_emg.status_code == 500
+    assert res_emg.json() == {"detail": "Format output AI cacat."}

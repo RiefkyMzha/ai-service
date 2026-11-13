@@ -8,6 +8,36 @@ from typing import Any, Dict, List, Optional, Tuple
 logger = logging.getLogger(__name__)
 
 _STOPWORDS = {"bank", "eks", "ex", "tbk", "persero"}
+_SKIP_TOKENS = _STOPWORDS | {"eks", "bpr", "bpd", "tbk", "ltd"}
+_BANK_PREFIX_REQUIRED = {
+    "mas",
+    "jago",
+    "mega",
+    "raya",
+    "index",
+    "capital",
+    "prima",
+    "bumi",
+    "jasa",
+    "ina",
+    "aceh",
+    "papua",
+    "bali",
+    "jakarta",
+    "banten",
+    "yogyakarta",
+    "jateng",
+    "jatim",
+    "sumut",
+    "kalbar",
+    "kalteng",
+    "kaltimtara",
+    "sulselbar",
+    "sumselbabel",
+    "ntb",
+    "diy",
+    "dki",
+}
 
 _WORD_SPLIT = re.compile(r"[^a-z0-9]+")
 _WORD_TOKEN = re.compile(r"[A-Za-z0-9]+")
@@ -74,37 +104,71 @@ class DataLoader:
                 self._bank_aliases.append((pattern, alias, order, bank))
 
     @staticmethod
-    def _aliases_for(bank: Dict[str, Any]) -> set[str]:
+    def _add_safe_alias(aliases: set[str], candidate: str) -> None:
+        cleaned = candidate.strip()
+        if not cleaned or cleaned in _STOPWORDS:
+            return
+        if len(cleaned.split()) == 1 and cleaned in _BANK_PREFIX_REQUIRED:
+            return
+        aliases.add(cleaned)
+
+    @classmethod
+    def _aliases_for(cls, bank: Dict[str, Any]) -> set[str]:
         name = str(bank.get("name", ""))
-        aliases: set[str] = {_normalize(name)}
+        aliases: set[str] = set()
+        cls._add_safe_alias(aliases, _normalize(name))
+
+        outer_raw = re.sub(r"\([^)]*\)", "", name).strip()
+        for part in outer_raw.split("/"):
+            norm_part = _normalize(part)
+            cls._add_safe_alias(aliases, norm_part)
+            if norm_part.startswith("bank "):
+                cls._add_safe_alias(aliases, norm_part[len("bank ") :])
 
         for inner in re.findall(r"\(([^)]*)\)", name):
-            aliases.add(_normalize(inner))
-            words = [
-                word
-                for word in _WORD_TOKEN.findall(inner)
-                if word.lower() not in {"eks", "ex"}
-            ]
-            if len(words) >= 2:
-                aliases.add("".join(word[0] for word in words).lower())
+            norm_inner = _normalize(inner)
+            if not norm_inner:
+                continue
+            cls._add_safe_alias(aliases, norm_inner)
+            if norm_inner.startswith(("eks ", "ex ")):
+                cls._add_safe_alias(aliases, re.sub(r"^(?:eks|ex)\s+", "", norm_inner))
+            else:
+                if norm_inner.startswith("bank "):
+                    cls._add_safe_alias(aliases, norm_inner[len("bank ") :])
+                words = [
+                    word
+                    for word in _WORD_TOKEN.findall(inner)
+                    if word.lower() not in {"eks", "ex"}
+                ]
+                if len(words) >= 3:
+                    cls._add_safe_alias(
+                        aliases, "".join(word[0] for word in words).lower()
+                    )
 
-        normalized = _normalize(name)
-        if normalized.startswith("bank "):
-            aliases.add(normalized[len("bank ") :])
-
-        for token in _WORD_TOKEN.findall(name):
-            if len(token) >= 4 and token.isupper() and token.lower() not in _STOPWORDS:
-                aliases.add(_normalize(token))
+        if "syariah" not in outer_raw.lower() and "digital" not in outer_raw.lower():
+            for token in _WORD_TOKEN.findall(outer_raw):
+                if (
+                    len(token) >= 3
+                    and token.isupper()
+                    and token.lower() not in _SKIP_TOKENS
+                ):
+                    cls._add_safe_alias(aliases, _normalize(token))
 
         explicit = bank.get("aliases")
         if isinstance(explicit, list):
-            aliases.update(
-                _normalize(item) for item in explicit if isinstance(item, str)
-            )
+            for item in explicit:
+                if isinstance(item, str):
+                    norm_item = _normalize(item)
+                    if norm_item and norm_item not in _STOPWORDS:
+                        aliases.add(norm_item)
 
-        return {alias for alias in aliases if alias and alias not in _STOPWORDS}
+        return aliases
 
-    def _best_match(self, texts: Tuple[str, ...]) -> Optional[Tuple[Dict[str, Any], str]]:
+    def _best_match(
+        self,
+        texts: Tuple[str, ...],
+        exclude_names: Optional[set[str]] = None,
+    ) -> Optional[Tuple[Dict[str, Any], str]]:
         haystack = " ".join(_normalize(text) for text in texts if text and str(text).strip())
         if not haystack:
             return None
@@ -113,6 +177,8 @@ class DataLoader:
         candidate_names: set[str] = set()
 
         for pattern, alias, order, bank in self._bank_aliases:
+            if exclude_names and bank.get("name") in exclude_names:
+                continue
             match = pattern.search(haystack)
             if not match:
                 continue
@@ -151,14 +217,87 @@ class DataLoader:
             )
         return best_bank, best_alias
 
-    def match_bank(self, *texts: str) -> Optional[Dict[str, Any]]:
+    def match_bank(
+        self,
+        *texts: str,
+        exclude_names: Optional[set[str]] = None,
+    ) -> Optional[Dict[str, Any]]:
         """Kembalikan entri bank paling cocok dari whitelist call center."""
-        found = self._best_match(texts)
+        found = self._best_match(texts, exclude_names=exclude_names)
         return found[0] if found else None
 
-    def official_contact_for(self, *texts: str) -> Optional[Dict[str, str]]:
+    def match_banks(
+        self,
+        *texts: str,
+        limit: int = 3,
+        exclude_names: Optional[set[str]] = None,
+        require_call: bool = False,
+    ) -> List[Dict[str, Any]]:
+        if limit <= 0:
+            return []
+
+        results: List[Dict[str, Any]] = []
+        seen_orders: set[int] = set()
+
+        for text in texts:
+            haystack = _normalize(str(text)) if text else ""
+            if not haystack:
+                continue
+
+            raw_matches: List[
+                Tuple[Tuple[Any, ...], int, int, str, int, Dict[str, Any]]
+            ] = []
+            for pattern, alias, order, bank in self._bank_aliases:
+                if exclude_names and bank.get("name") in exclude_names:
+                    continue
+                if require_call and bank.get("call") is None:
+                    continue
+                for match in pattern.finditer(haystack):
+                    start, end = match.start(), match.end()
+                    spec_key = (
+                        -len(alias.split()),
+                        -len(alias),
+                        start,
+                        len(str(bank.get("name", ""))),
+                        order,
+                    )
+                    raw_matches.append((spec_key, start, end, alias, order, bank))
+
+            raw_matches.sort(key=lambda item: item[0])
+
+            claimed_spans: List[Tuple[int, int]] = []
+            accepted: List[Tuple[Tuple[Any, ...], int, Dict[str, Any]]] = []
+            for _, start, end, alias, order, bank in raw_matches:
+                if any(start < c_end and end > c_start for c_start, c_end in claimed_spans):
+                    continue
+                claimed_spans.append((start, end))
+                rank = (
+                    0 if haystack == alias else 1,
+                    start,
+                    -len(alias.split()),
+                    -len(alias),
+                    order,
+                )
+                accepted.append((rank, order, bank))
+
+            accepted.sort(key=lambda item: item[0])
+            for _, order, bank in accepted:
+                if order in seen_orders:
+                    continue
+                seen_orders.add(order)
+                results.append(bank)
+                if len(results) >= limit:
+                    return results
+
+        return results
+
+    def official_contact_for(
+        self,
+        *texts: str,
+        exclude_names: Optional[set[str]] = None,
+    ) -> Optional[Dict[str, str]]:
         """Bangun official_contact hanya dari bank yang terdaftar di data statis."""
-        found = self._best_match(texts)
+        found = self._best_match(texts, exclude_names=exclude_names)
         if not found:
             return None
 
@@ -173,6 +312,23 @@ class DataLoader:
             return None
 
         return {"name": str(bank.get("name")), "phone": str(call)}
+
+    def official_contacts_for(
+        self,
+        *texts: str,
+        limit: int = 3,
+        exclude_names: Optional[set[str]] = None,
+    ) -> List[Dict[str, str]]:
+        banks = self.match_banks(
+            *texts,
+            limit=limit,
+            exclude_names=exclude_names,
+            require_call=True,
+        )
+        return [
+            {"name": str(bank.get("name")), "phone": str(bank.get("call"))}
+            for bank in banks
+        ]
 
     def find_bank_contact(self, bank_name: str) -> Dict[str, Any] | None:
         """Kompatibilitas: cari entri bank berdasarkan nama (case-insensitive)."""

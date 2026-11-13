@@ -37,8 +37,10 @@ class AnalysisResponse(BaseModel):
     reasons: List[str]
     recommendations: List[str]
     official_contact: Optional[OfficialContact] = None
+    official_contacts: List[OfficialContact] = Field(default_factory=list)
 
 class EmergencyResponse(BaseModel):
     ai_kronologi: str
     langkah_penanganan: List[ActionStep]
     official_contact: Optional[OfficialContact] = None
+    official_contacts: List[OfficialContact] = Field(default_factory=list)

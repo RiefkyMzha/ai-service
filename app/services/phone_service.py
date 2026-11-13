@@ -16,7 +16,8 @@ from fastapi import HTTPException
 from starlette.concurrency import run_in_threadpool
 from app.core.config import settings
 from app.core.normalization import normalize_analysis_result
-from app.services.ai_service import AIService
+from app.schemas.payload import AnalysisResponse
+from app.services.ai_service import AIService, finalize_ai_result, parse_ai_json
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +176,7 @@ class PhoneService:
                     "Blokir nomor apabila meminta transfer dana atau data rahasia.",
                 ],
                 "official_contact": None,
+                "official_contacts": [],
             }
             return normalize_analysis_result(mock_phone_result)
 
@@ -202,15 +204,36 @@ class PhoneService:
                 detail="Respons layanan pencarian nomor tidak valid.",
             )
 
-        gtc_profile = body.get("result", {}).get("profile", {})
-        gtc_tags = body.get("result", {}).get("tags", [])
-        
+        gtc_result = body.get("result")
+        if not isinstance(gtc_result, dict):
+            gtc_result = {}
+
+        raw_profile = gtc_result.get("profile")
+        gtc_profile = raw_profile if isinstance(raw_profile, dict) else {}
+
+        raw_tags = gtc_result.get("tags")
+        gtc_tags = raw_tags if isinstance(raw_tags, list) else []
+
+        clean_tags = [
+            tag.strip()
+            for item in gtc_tags
+            if isinstance(item, dict)
+            and isinstance((tag := item.get("tag")), str)
+            and tag.strip()
+        ]
+        display_name = gtc_profile.get("displayName")
+        profile_name = (
+            display_name.strip()
+            if isinstance(display_name, str) and display_name.strip()
+            else "Unknown"
+        )
+
         from app.core.prompts import REASONING_PROMPT
-        
+
         gtc_context = (
             f"TARGET PHONE NUMBER: {normalized_phone}\n"
-            f"GETCONTACT PROFILE NAME: {gtc_profile.get('displayName', 'Unknown')}\n"
-            f"GETCONTACT TAGS: {', '.join([t.get('tag') for t in gtc_tags]) if gtc_tags else 'No tags found'}\n"
+            f"GETCONTACT PROFILE NAME: {profile_name}\n"
+            f"GETCONTACT TAGS: {', '.join(clean_tags) if clean_tags else 'No tags found'}\n"
         )
         
         messages = [
@@ -223,23 +246,15 @@ class PhoneService:
         
         logger.info("Mengirim data GetContact ke LLM untuk analisis risiko...")
         raw_result = await self.ai_service._call_openrouter(messages)
-
-        try:
-            result = json.loads(raw_result)
-            if not isinstance(result, dict):
-                raise ValueError("Output AI bukan object JSON.")
-        except (json.JSONDecodeError, ValueError) as err:
-            logger.error("Output AI untuk nomor gagal di-parse.")
-            raise HTTPException(status_code=500, detail="Format output AI cacat.") from err
-
+        result = parse_ai_json(raw_result, "nomor")
         result = normalize_analysis_result(result)
-        result["official_contact"] = self.ai_service.data_loader.official_contact_for(
-            gtc_context
+        contacts = self.ai_service.data_loader.official_contacts_for(
+            gtc_context, limit=3
         )
+        result = finalize_ai_result(result, contacts, AnalysisResponse, "nomor")
 
-        display_name = gtc_profile.get("displayName") if isinstance(gtc_profile, dict) else None
         has_profile_name = isinstance(display_name, str) and bool(display_name.strip())
-        has_tags = isinstance(gtc_tags, list) and len(gtc_tags) > 0
+        has_tags = len(clean_tags) > 0
         if has_profile_name or has_tags:
             _set_cached_phone_result(cache_key, result)
 

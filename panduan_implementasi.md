@@ -103,8 +103,8 @@ Perhatikan tipe data yang diterima setiap endpoint agar tidak mengalami error va
 | `/api/v1/analyze/text` | `POST` | `multipart/form-data` / `urlencoded` | **`text_content`** (wajib, 1–10.000 karakter)<br>**`image`** (opsional, file JPG/PNG/WEBP $\le 15$ MB) |
 | `/api/v1/analyze/image` | `POST` | `multipart/form-data` | **`platform`** (wajib, misal `"WhatsApp"`, `"Telegram"`)<br>**`image`** (wajib, file bukti gambar $\le 15$ MB) |
 | `/api/v1/analyze/phone` | `POST` | `application/json` | **`phone_number`** (wajib, format Indonesia: `08...`, `628...`, atau `+628...`, panjang 8–15 digit) |
-| `/api/v1/emergency/financial` | `POST` | `multipart/form-data` | **`bank_korban`**, **`platform_kejadian`**, **`tanggal_kejadian`** (`YYYY-MM-DD`), **`tujuan_transaksi`**, **`nomor_rekening_penipu`**, **`nominal_kerugian`** (angka $\ge 0$), **`bukti_transfer`** (file gambar wajib)<br>*Opsional:* `nama_institusi_penipu`, `nama_pemilik_penipu`, `kronologi_user` |
-| `/api/v1/emergency/data-breach` | `POST` | `multipart/form-data` | **`jenis_data`**, **`tanggal_kejadian`** (`YYYY-MM-DD`), **`platform_kejadian`**, **`tindakan_pelaku`**, **`status_akses`**, **`bukti_percakapan`** (file gambar wajib)<br>*Opsional:* `kronologi_user` |
+| `/api/v1/emergency/financial` | `POST` | `multipart/form-data` | **`bank_korban`**, **`platform_kejadian`**, **`tanggal_kejadian`** (`YYYY-MM-DD`), **`tujuan_transaksi`**, **`nomor_rekening_penipu`**, **`nominal_kerugian`** (angka $\ge 0$), **`kronologi_user`** (1–10.000 karakter), **`bukti_transfer`** (file gambar wajib)<br>*Opsional:* `nama_institusi_penipu`, `nama_pemilik_penipu` |
+| `/api/v1/emergency/data-breach` | `POST` | `multipart/form-data` | **`jenis_data`**, **`tanggal_kejadian`** (`YYYY-MM-DD`), **`platform_kejadian`**, **`tindakan_pelaku`**, **`status_akses`**, **`kronologi_user`** (1–10.000 karakter), **`bukti_percakapan`** (file gambar wajib) |
 
 ---
 
@@ -238,7 +238,14 @@ Ketika frontend menerima payload respons analisis:
     "name": "Bank BCA (Bank Central Asia)",
     "phone": "1500888",
     "whatsapp": null
-  }
+  },
+  "official_contacts": [
+    {
+      "name": "Bank BCA (Bank Central Asia)",
+      "phone": "1500888",
+      "whatsapp": null
+    }
+  ]
 }
 ```
 
@@ -251,13 +258,19 @@ Ketika frontend menerima payload respons analisis:
 | `60 – 79` | **Tinggi** | Oranye Tua (`#EA580C`) | Sangat mencurigakan, terdapat pola penipuan aktif |
 | `80 – 100` | **Sangat Tinggi** | Merah (`#EF4444`) | Terkonfirmasi kuat sebagai modus kejahatan penipuan |
 
-### 2. Penanganan Aman Field `official_contact` (`null-check`):
-- Field `official_contact` akan bernilai **`null`** apabila bukti tidak menyebutkan nama bank yang terdaftar di whitelist resmi.
+### 2. Penanganan Aman Field `official_contact` & `official_contacts` (`null-check`):
+- Field `official_contact` akan bernilai **`null`** (dan `official_contacts` bernilai `[]`) apabila bukti tidak menyebutkan nama bank yang terdaftar di whitelist resmi.
+- Jika terdeteksi lebih dari satu bank (misal bank pengirim dan bank penerima pada penipuan finansial), `official_contacts` dapat berisi hingga **3 bank unik**, sedangkan `official_contact` selalu berisi bank pertama/utama.
 - **Penting:** Pastikan kode frontend melakukan pengecekan kondisi sebelum merender:
   ```javascript
   // Contoh penanganan aman di React / Vue / JS
-  if (data.official_contact) {
-    renderOfficialContactCard(data.official_contact.name, data.official_contact.phone);
+  const contacts = data.official_contacts?.length
+    ? data.official_contacts
+    : data.official_contact
+      ? [data.official_contact]
+      : [];
+  if (contacts.length > 0) {
+    contacts.forEach((c) => renderOfficialContactCard(c.name, c.phone));
   } else {
     // Sembunyikan kartu kontak bank atau tampilkan saran umum
   }

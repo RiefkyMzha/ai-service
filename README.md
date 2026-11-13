@@ -68,21 +68,35 @@ venv\Scripts\python.exe -m pytest
 
 ```
 app/
-  main.py            # entrypoint FastAPI + logging + CORSMiddleware
-  api/routes.py      # 5 endpoint bisnis + dependency factory
-  core/
-    config.py        # Settings (.env, termasuk OPENROUTER_MODEL, OPENROUTER_BASE_URL, MOCK_MODE, & CORS_ORIGINS)
-    data_loader.py   # whitelist bank + indeks knowledge base (min_keywords=3)
-    normalization.py # label LLM -> Bahasa Indonesia
-    prompts.py       # prompt Vision/Reasoning/Emergency + guardrails
-    security.py      # middleware & schema auth X-API-Token
-  schemas/payload.py # response model + validasi nomor telepon
-  services/
-    ai_service.py    # OpenRouter (threadpool), KB injection, chunked streaming gambar, MOCK_MODE
-    phone_service.py # GetContact (threadpool) + in-memory cache (100 nomor, 24 jam) + enrichment + MOCK_MODE
-  data/              # JSON bank, knowledge base, kredensial (lokal)
-tests/               # 72 test, tanpa jaringan (unit, route, auth, CORS, log, stream, KB, cache, mock mode)
-eval/                # skrip evaluasi Fase 2 (evaluate_phase2.py); eval/data/ di-ignore Git
+├── main.py                  # Entry point FastAPI, logging, dan CORS middleware
+│
+├── api/
+│   └── routes.py            # 5 business endpoints dan dependency factory
+│
+├── core/
+│   ├── config.py            # Application settings (.env, OpenRouter, MOCK_MODE, CORS)
+│   ├── data_loader.py       # Whitelist bank dan indeks knowledge base (min_keywords=3)
+│   ├── normalization.py     # Normalisasi label LLM ke Bahasa Indonesia
+│   ├── prompts.py           # Prompt Vision, Reasoning, Emergency, dan guardrails
+│   └── security.py          # Middleware keamanan dan validasi X-API-Token
+│
+├── schemas/
+│   └── payload.py           # Response model dan validasi nomor telepon
+│
+├── services/
+│   ├── ai_service.py        # OpenRouter, threadpool, KB injection, chunked image streaming, MOCK_MODE
+│   └── phone_service.py     # GetContact, threadpool, cache in-memory, enrichment, MOCK_MODE
+│
+└── data/
+    ├── bank/                # Data JSON whitelist bank
+    ├── knowledge_base/      # Data knowledge base
+    └── credentials/         # Kredensial lokal
+│
+├── tests/                   # 114 automated tests (tanpa akses jaringan)
+│
+└── eval/
+    ├── evaluate_phase2.py   # Skrip evaluasi Fase 2
+    └── data/                # Dataset evaluasi (di-ignore oleh Git)
 ```
 
 ## Pemetaan error
@@ -225,7 +239,7 @@ Bagian ini merangkum pengujian fungsional otomatis, verifikasi respons negatif H
 
 ### 1. Pengujian
 
-Pengujian mencakup **72 skenario uji** tanpa ketergantungan jaringan eksternal (OpenRouter dan GetContact di-mock):
+Pengujian mencakup **114 skenario uji** tanpa ketergantungan jaringan eksternal (OpenRouter dan GetContact di-mock):
 
 ```powershell
 venv\Scripts\pip.exe install -r requirements-dev.txt
@@ -237,7 +251,7 @@ venv\Scripts\python.exe -m pytest
 | `tests/test_data_loader.py` | Ranking alias bank, URL/karakter khusus, alias manual, data hilang, dan pencocokan Knowledge Base (`min_keywords=3`) |
 | `tests/test_ai_service.py` | Validasi API key kosong, timeout handling, error 401, parsing JSON cacat, filter MIME/ukuran gambar, dan override kontak bank |
 | `tests/test_phone_service.py` | Kredensial GetContact hilang/rusak/tidak lengkap, penanganan sesi 401, sanitasi PII log, in-memory cache (100 nomor, 24 jam), dan enrichment kontak |
-| `tests/test_routes.py` | Pengujian 5 rute bisnis, validasi error 400/413/422, penimpaan kontak palsu, dan simulasi mode `MOCK_MODE=true` |
+| `tests/test_routes.py` | Pengujian 5 rute bisnis, validasi error 400/413/422 (termasuk wajib `kronologi_user` ≤ 10.000 karakter), penimpaan kontak palsu, dan simulasi mode `MOCK_MODE=true` |
 | `tests/test_auth.py` | Autentikasi `X-API-Token`, penolakan 401 token salah/tanpa header, fail-closed 500, preflight CORS, dan endpoint `/health` |
 
 ### 2. Pengujian Negatif
@@ -250,6 +264,8 @@ Pengujian batas input abnormal (*negative testing*) dieksekusi langsung terhadap
 | `text_content` melebihi batas | Teks > 10.000 karakter | **422** | `{"detail":[{"type":"string_too_long","msg":"String should have at most 10000 characters"}]}` |
 | Format nomor telepon tidak valid | `{"phone_number": "abc"}` | **422** | `{"detail":[{"type":"value_error","msg":"Format nomor telepon tidak valid"}]}` |
 | Nominal kerugian negatif | `nominal_kerugian = -5` | **422** | `{"detail":[{"type":"greater_than_equal","msg":"Input should be greater than or equal to 0"}]}` |
+| `kronologi_user` tidak dikirim | Form darurat tanpa field kronologi | **422** | `{"detail":[{"type":"missing","loc":["body","kronologi_user"],"msg":"Field required"}]}` |
+| `kronologi_user` melebihi batas | Kronologi > 10.000 karakter | **422** | `{"detail":[{"type":"string_too_long","msg":"String should have at most 10000 characters"}]}` |
 | Format biner bukan gambar | File teks `.txt` (`text/plain`) | **400** | `{"detail":"File harus berupa gambar (JPG, PNG, atau WEBP)."}` |
 | Ukuran gambar > 15 MB | File gambar berukuran 15 MB + 1 byte | **413** | `{"detail":"Ukuran gambar maksimal 15MB."}` |
 | Bukti transfer tidak dilampirkan | `POST /api/v1/emergency/financial` tanpa file | **422** | `{"detail":[{"type":"missing","loc":["body","bukti_transfer"],"msg":"Field required"}]}` |
@@ -285,6 +301,10 @@ Evaluasi diuji pada dua skenario:
 1. **Zero False Positive (Precision 100%):** Seluruh pesan normal terklasifikasi sebagai risiko `Rendah` (skor 5–10). Tidak ada percakapan wajar yang salah dituduh sebagai penipuan.
 2. **Peningkatan Deteksi Modus Penipuan Transfer Uang:** Pada kasus instruksi transfer ke rekening bank tanpa tautan phishing (Row 892), skor risiko naik dari `30` (*False Negative*) menjadi **`65` (`Tinggi`, *True Positive*)** berkat injeksi referensi Knowledge Base.
 3. **Kinerja Latensi Inferensi:** Latensi median (*p50*) pemrosesan LLM tercatat **14,00 detik** (rata-rata *mean* Baseline: 19,91 detik), menegaskan pentingnya batas timeout $\ge 90$ detik pada integrasi klien web.
+
+### 4. Pengujian Integrasi End-to-End dengan Sistem Web (Lokal — Mode Live)
+
+Pada **2026-11-13**, telah dilakukan pengujian integrasi *end-to-end* di lingkungan lokal (`localhost`) antara sistem web (frontend dan backend utama aplikasi web) dengan CegahScam AI Service menggunakan **Mode Live (`MOCK_MODE=false`)** serta autentikasi header `X-API-Token`. Seluruh **5 endpoint bisnis** (`/api/v1/analyze/text`, `/api/v1/analyze/image`, `/api/v1/analyze/phone`, `/api/v1/emergency/financial`, dan `/api/v1/emergency/data-breach`) telah diuji dan berjalan lancar sesuai kontrak API.
 
 
 

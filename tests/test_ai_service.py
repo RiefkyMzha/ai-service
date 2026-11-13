@@ -256,3 +256,93 @@ def test_openrouter_model_configurable_and_logs_latency(
     assert "Inferensi OpenRouter (custom/vision-model:free) selesai dalam" in caplog.text
 
 
+def test_openrouter_malformed_envelope_returns_500(monkeypatch, service: AIService):
+    monkeypatch.setattr(settings, "OPENROUTER_API_KEY", "test-key")
+
+    for bad_payload in (
+        {"choices": None},
+        {"choices": [{"message": {"content": None}}]},
+    ):
+        class DummyResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return bad_payload
+
+        monkeypatch.setattr(
+            "app.services.ai_service.requests.post",
+            lambda *args, **kwargs: DummyResponse(),
+        )
+
+        with pytest.raises(HTTPException) as exc:
+            run(service._call_openrouter([{"role": "user", "content": "tes"}]))
+
+        assert exc.value.status_code == 500
+        assert exc.value.detail == "Respons AI tidak valid."
+
+
+def test_non_string_and_schema_invalid_output_return_500_without_pii_log(
+    monkeypatch, caplog, service: AIService
+):
+    secret_reason = "RAHASIA-KORBAN-ALASAN"
+    secret_step = "RAHASIA-KORBAN-LANGKAH"
+    caplog.set_level(logging.ERROR)
+
+    async def fake_none(self, messages):
+        return None
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_none)
+    with pytest.raises(HTTPException) as exc_none:
+        run(service.analyze_text_and_image("tes", None))
+    assert exc_none.value.status_code == 500
+    assert exc_none.value.detail == "Format output AI cacat."
+
+    async def fake_bad_analysis(self, messages):
+        return (
+            f'{{"risk_score": 150, "risk_category": "Tinggi",'
+            f' "reasons": "{secret_reason}", "recommendations": ["y"]}}'
+        )
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_bad_analysis)
+    with pytest.raises(HTTPException) as exc_analysis:
+        run(service.analyze_text_and_image("tes", None))
+    assert exc_analysis.value.status_code == 500
+    assert exc_analysis.value.detail == "Format output AI cacat."
+    assert secret_reason not in caplog.text
+
+    async def fake_bad_emergency(self, messages):
+        return (
+            f'{{"ai_kronologi": null, "langkah_penanganan": ["{secret_step}"]}}'
+        )
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_bad_emergency)
+    with pytest.raises(HTTPException) as exc_emergency:
+        run(service.process_emergency({"bank_korban": "BCA"}, None, is_financial=True))
+    assert exc_emergency.value.status_code == 500
+    assert exc_emergency.value.detail == "Format output AI cacat."
+    assert secret_step not in caplog.text
+
+
+def test_analyze_coerces_string_score_and_sets_optional_scam_type(
+    monkeypatch, service: AIService
+):
+    async def fake_call(self, messages):
+        return (
+            '{"risk_score": "80", "risk_category": "high",'
+            ' "reasons": ["x"], "recommendations": ["y"],'
+            ' "official_contact": "halusinasi"}'
+        )
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_call)
+    result = run(service.analyze_text_and_image("Ini BCA", None))
+
+    assert result["risk_score"] == 80
+    assert isinstance(result["risk_score"], int)
+    assert result["scam_type"] is None
+    assert result["official_contact"] == {
+        "name": "Bank BCA (Bank Central Asia)",
+        "phone": "1500888",
+    }
+
+

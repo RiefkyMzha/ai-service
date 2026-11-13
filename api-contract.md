@@ -48,7 +48,7 @@ Error validasi (422) mengikuti format Pydantic:
 |---|---|
 | `text_content` | 1–10.000 karakter |
 | `platform` | 1–50 karakter |
-| `kronologi_user` | ≤ 5.000 karakter |
+| `kronologi_user` | 1–10.000 karakter |
 | Gambar | `image/jpeg`, `image/jpg`, `image/png`, `image/webp`; ≤ 15 MB |
 | `phone_number` | `08…`, `628…`, atau `+628…`; total 8–15 digit |
 
@@ -73,7 +73,8 @@ Dipakai oleh `/analyze/text`, `/analyze/image`, `/analyze/phone`.
 | `scam_type` | string \| null | tidak | Label dinormalisasi ke Bahasa Indonesia |
 | `reasons` | string[] | ya | Alasan berbasis bukti |
 | `recommendations` | string[] | ya | Langkah pencegahan |
-| `official_contact` | `OfficialContact` \| null | tidak | Lihat §4 |
+| `official_contact` | `OfficialContact` \| null | tidak | Kontak bank utama (elemen ke-0 dari `official_contacts`), lihat §4 |
+| `official_contacts` | `OfficialContact[]` | tidak | Daftar multi-bank unik (maksimal 3), default `[]` |
 
 ### 2.3 `EmergencyResponse`
 
@@ -83,7 +84,8 @@ Dipakai oleh `/emergency/financial` dan `/emergency/data-breach`.
 |---|---|---|---|
 | `ai_kronologi` | string | ya | Format I/II/III, dipisah `\n` |
 | `langkah_penanganan` | array `{title, description}` | ya | Minimal satu langkah |
-| `official_contact` | `OfficialContact` \| null | tidak | Lihat §4 |
+| `official_contact` | `OfficialContact` \| null | tidak | Kontak bank utama (elemen ke-0 dari `official_contacts`), lihat §4 |
+| `official_contacts` | `OfficialContact[]` | tidak | Daftar multi-bank unik (maksimal 3), default `[]` |
 
 ## 3. Endpoint
 
@@ -141,7 +143,7 @@ curl -X POST http://127.0.0.1:8000/api/v1/analyze/image \
   -F "platform=WhatsApp" -F "image=@bukti.png;type=image/png"
 ```
 
-Respons `200`: bentuk `AnalysisResponse`. Karena tidak ada OCR di server, `official_contact` selalu `null`.
+Respons `200`: bentuk `AnalysisResponse`. `official_contact` diisi bila teks fakta `reasons` hasil pembacaan gambar menyebut nama bank di whitelist (tanpa memindai `recommendations` dan tanpa OJK); selain itu `null`.
 
 ### 3.3 `POST /api/v1/analyze/phone`
 
@@ -184,12 +186,12 @@ Menyusun kronologi dan langkah penanganan kasus penipuan finansial.
 | `bank_korban` | string | ya | 1–100 |
 | `platform_kejadian` | string | ya | 1–100 (misal `"WhatsApp"`, `"Telegram"`, `"Instagram"`) |
 | `tanggal_kejadian` | string | ya | maks. 10 (`YYYY-MM-DD`, contoh: `"2026-11-03"`) |
-| `tujuan_transaksi` | string | ya | 1–200 |
+| `tujuan_transaksi` | string | ya | 1–1.000 |
 | `nomor_rekening_penipu` | string | ya | 1–50 |
 | `nominal_kerugian` | number | ya | ≥ 0 |
 | `nama_institusi_penipu` | string | tidak | ≤ 200 |
 | `nama_pemilik_penipu` | string | tidak | ≤ 200 |
-| `kronologi_user` | string | tidak | ≤ 5.000 |
+| `kronologi_user` | string | ya | 1–10.000 |
 | `bukti_transfer` | file | ya | JPG/PNG/WEBP, ≤ 15 MB |
 
 ```bash
@@ -198,6 +200,7 @@ curl -X POST http://127.0.0.1:8000/api/v1/emergency/financial \
   -F "bank_korban=BCA" -F "platform_kejadian=WhatsApp" \
   -F "tanggal_kejadian=2026-10-27" -F "tujuan_transaksi=Pembelian barang" \
   -F "nomor_rekening_penipu=1234567890" -F "nominal_kerugian=1500000" \
+  -F "kronologi_user=Saya mentransfer uang untuk pembelian barang namun kontak diblokir." \
   -F "bukti_transfer=@bukti.png;type=image/png"
 ```
 
@@ -217,18 +220,18 @@ Respons `200`:
 }
 ```
 
-`official_contact` hanya diisi dari `bank_korban`; bank di luar whitelist → `null`.
+`official_contact` berisi bank utama dan `official_contacts` menampung hingga 3 bank unik dengan urutan prioritas: `bank_korban` → `nama_institusi_penipu` → `kronologi_user` → `ai_kronologi`; bank di luar whitelist → `null` / `[]`.
 
 ### 3.5 `POST /api/v1/emergency/data-breach`
 
 | Field | Tipe | Wajib | Batasan |
 |---|---|---|---|
-| `jenis_data` | string | ya | 1–200 |
+| `jenis_data` | string | ya | 1–1.000 |
 | `tanggal_kejadian` | string | ya | maks. 10 (`YYYY-MM-DD`, contoh: `"2026-11-03"`) |
 | `platform_kejadian` | string | ya | 1–100 (misal `"Instagram"`, `"Telegram"`, `"Facebook"`) |
-| `tindakan_pelaku` | string | ya | 1–200 |
+| `tindakan_pelaku` | string | ya | 1–1.000 |
 | `status_akses` | string | ya | 1–100 |
-| `kronologi_user` | string | tidak | ≤ 5.000 |
+| `kronologi_user` | string | ya | 1–10.000 |
 | `bukti_percakapan` | file | ya | JPG/PNG/WEBP, ≤ 15 MB |
 
 ```bash
@@ -237,10 +240,11 @@ curl -X POST http://127.0.0.1:8000/api/v1/emergency/data-breach \
   -F "jenis_data=Data pribadi (nama, email)" -F "tanggal_kejadian=2026-10-27" \
   -F "platform_kejadian=Instagram" -F "tindakan_pelaku=Meminta OTP" \
   -F "status_akses=Masih bisa diakses" \
+  -F "kronologi_user=Akun saya menerima pesan phising yang meminta kode OTP verifikasi." \
   -F "bukti_percakapan=@bukti.png;type=image/png"
 ```
 
-Respons `200`: bentuk `EmergencyResponse`. `official_contact` diisi dari pencocokan nama bank pada `kronologi_user`/`tindakan_pelaku`/`jenis_data`, atau fallback ke `Otoritas Jasa Keuangan (OJK)` (`157`) bila `jenis_data` berkaitan dengan akun perbankan/finansial atau kartu kredit/debit (selain itu `null`).
+Respons `200`: bentuk `EmergencyResponse`. `official_contact` diisi dari pencocokan nama bank pada input pengguna (`kronologi_user`/`tindakan_pelaku`/`jenis_data`) terlebih dahulu; bila tidak ada, dipindai dari teks fakta `ai_kronologi` hasil ekstraksi gambar AI; atau fallback ke `Otoritas Jasa Keuangan (OJK)` (`157`) bila berkaitan dengan akun perbankan/finansial atau kartu kredit/debit (selain itu `null`).
 
 ### 3.6 `GET /health`
 
@@ -250,12 +254,17 @@ Respons `200`: bentuk `EmergencyResponse`. `official_contact` diisi dari pencoco
 
 Dipakai untuk memantau status layanan dan mengetahui apakah server sedang berjalan dalam Mode Mock (`"mock_mode": true`) atau Mode Live (`"mock_mode": false`). Tidak mengecek dependensi eksternal.
 
-## 4. Aturan `official_contact`
+## 4. Aturan `official_contact` & `official_contacts`
 
-- Field opsional, tetapi **wajib terisi** bila bank terdeteksi ada di `app/data/Bank_Call_Senter_Final.json` (100 entri, bentuk `{name, call, aliases?}`).
-- Sumber bukti: `text_content` (text), `bank_korban` (financial), `kronologi_user`/`tindakan_pelaku`/`jenis_data` dengan fallback OJK `157` untuk kategori perbankan/kartu (data-breach), serta profil/tag GetContact (phone). Endpoint image tidak punya bukti deterministik → `null`.
-- Nilai `official_contact` dari LLM selalu ditimpa; bank di luar whitelist menghasilkan `null`.
-- Jika beberapa bank terdeteksi, dipilih yang paling cocok: alias sama persis → alias paling spesifik → alias terpanjang → kemunculan paling awal → nama terpendek.
+- Field opsional, tetapi `official_contact` **wajib terisi** (dan `official_contacts` menampung hingga **3 bank unik**) bila bank terdeteksi ada di `app/data/Bank_Call_Senter_Final.json` (100 entri, bentuk `{name, call, aliases?}`).
+- Sumber bukti (berurutan):
+  - `analyze/text` & `analyze/image`: `user_text` → `reasons` hasil pembacaan gambar (bila ada gambar).
+  - `analyze/phone`: profil dan tag GetContact.
+  - `emergency/financial`: `bank_korban` → `nama_institusi_penipu` → `kronologi_user` → `ai_kronologi`.
+  - `emergency/data-breach`: `kronologi_user`/`tindakan_pelaku`/`jenis_data` → `ai_kronologi` → fallback `Otoritas Jasa Keuangan (OJK)` (`157`) bila berkaitan dengan perbankan/kartu dan tidak ada bank spesifik yang terdeteksi.
+- Saat memindai input/teks AI untuk multi-bank, `Otoritas Jasa Keuangan (OJK)` dikecualikan agar OJK tidak muncul bersama bank spesifik (OJK hanya lewat jalur fallback `data-breach`).
+- Nilai `official_contact` dari LLM selalu ditimpa; bank di luar whitelist menghasilkan `null` (`[]` untuk `official_contacts`).
+- Jika beberapa bank terdeteksi dalam satu teks, alias tumpang-tindih di posisi karakter yang sama disaring (alias lebih spesifik/panjang menang) lalu diurutkan sesuai kemunculan awal, maksimal 3 bank. `official_contact` selalu sama dengan `official_contacts[0]` (atau `null` jika kosong).
 - `phone` selalu dikembalikan sebagai string.
 
 Contoh:

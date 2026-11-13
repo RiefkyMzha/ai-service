@@ -371,3 +371,98 @@ def test_analyze_phone_does_not_cache_empty_gtc_result(monkeypatch, service: Pho
     assert gtc_calls == 2
     assert len(_PHONE_CACHE) == 0
 
+
+def test_analyze_phone_multi_bank_from_profile_and_tags(
+    monkeypatch, service: PhoneService
+):
+    monkeypatch.setattr(PhoneService, "_get_active_cred", lambda self: VALID_CRED)
+    monkeypatch.setattr(
+        PhoneService,
+        "_gtc_call",
+        lambda self, endpoint, payload, cred: (
+            200,
+            {
+                "result": {
+                    "profile": {"displayName": "CS BCA"},
+                    "tags": [{"tag": "Penipu BRI"}, {"tag": "Penipu Bank Mandiri"}],
+                }
+            },
+        ),
+    )
+
+    async def fake_llm(self, messages):
+        return ANALYSIS_JSON
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_llm)
+
+    result = run(service.analyze_phone_number("081234567890"))
+
+    assert result["official_contact"]["name"] == "Bank BCA (Bank Central Asia)"
+    assert [c["name"] for c in result["official_contacts"]] == [
+        "Bank BCA (Bank Central Asia)",
+        "Bank BRI (Bank Rakyat Indonesia)",
+        "Bank Mandiri",
+    ]
+
+
+def test_analyze_phone_handles_null_gtc_result_and_malformed_tags(
+    monkeypatch, service: PhoneService
+):
+    responses = iter(
+        [
+            {"result": None},
+            {
+                "result": {
+                    "profile": None,
+                    "tags": [None, {"tag": None}, {"tag": "  "}, {"tag": "Penipu BCA"}],
+                }
+            },
+        ]
+    )
+
+    monkeypatch.setattr(PhoneService, "_get_active_cred", lambda self: VALID_CRED)
+    monkeypatch.setattr(
+        PhoneService,
+        "_gtc_call",
+        lambda self, endpoint, payload, cred: (200, next(responses)),
+    )
+
+    async def fake_llm(self, messages):
+        return ANALYSIS_JSON
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_llm)
+
+    first = run(service.analyze_phone_number("081234567890"))
+    assert first["official_contact"] is None
+    assert len(_PHONE_CACHE) == 0
+
+    second = run(service.analyze_phone_number("081234567890"))
+    assert second["official_contact"]["name"] == "Bank BCA (Bank Central Asia)"
+    assert len(_PHONE_CACHE) == 1
+
+
+def test_analyze_phone_schema_error_returns_500_without_poisoning_cache(
+    monkeypatch, service: PhoneService
+):
+    monkeypatch.setattr(PhoneService, "_get_active_cred", lambda self: VALID_CRED)
+    monkeypatch.setattr(
+        PhoneService,
+        "_gtc_call",
+        lambda self, endpoint, payload, cred: (
+            200,
+            {"result": {"profile": {"displayName": "CS Bank BCA"}, "tags": [{"tag": "spam"}]}},
+        ),
+    )
+
+    async def fake_bad_llm(self, messages):
+        return '{"risk_score": 150, "risk_category": "Tinggi", "reasons": ["x"], "recommendations": ["y"]}'
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_bad_llm)
+
+    with pytest.raises(HTTPException) as exc:
+        run(service.analyze_phone_number("081234567890"))
+
+    assert exc.value.status_code == 500
+    assert exc.value.detail == "Format output AI cacat."
+    assert len(_PHONE_CACHE) == 0
+

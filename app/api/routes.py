@@ -56,12 +56,12 @@ async def emergency_financial(
     bank_korban: str = Form(..., min_length=1, max_length=100),
     platform_kejadian: str = Form(..., min_length=1, max_length=100),
     tanggal_kejadian: str = Form(..., min_length=1, max_length=10),
-    tujuan_transaksi: str = Form(..., min_length=1, max_length=200),
+    tujuan_transaksi: str = Form(..., min_length=1, max_length=1_000),
     nomor_rekening_penipu: str = Form(..., min_length=1, max_length=50),
     nominal_kerugian: float = Form(..., ge=0),
     nama_institusi_penipu: Optional[str] = Form(None, max_length=200),
     nama_pemilik_penipu: Optional[str] = Form(None, max_length=200),
-    kronologi_user: Optional[str] = Form(None, max_length=5_000),
+    kronologi_user: str = Form(..., min_length=1, max_length=10_000),
     bukti_transfer: UploadFile = File(...),
     ai_service: AIService = Depends(get_ai_service)
 ):
@@ -81,12 +81,12 @@ async def emergency_financial(
 
 @router.post("/emergency/data-breach", response_model=EmergencyResponse)
 async def emergency_data_breach(
-    jenis_data: str = Form(..., min_length=1, max_length=200),
+    jenis_data: str = Form(..., min_length=1, max_length=1_000),
     tanggal_kejadian: str = Form(..., min_length=1, max_length=10),
     platform_kejadian: str = Form(..., min_length=1, max_length=100),
-    tindakan_pelaku: str = Form(..., min_length=1, max_length=200),
+    tindakan_pelaku: str = Form(..., min_length=1, max_length=1_000),
     status_akses: str = Form(..., min_length=1, max_length=100),
-    kronologi_user: Optional[str] = Form(None, max_length=5_000),
+    kronologi_user: str = Form(..., min_length=1, max_length=10_000),
     bukti_percakapan: UploadFile = File(...),
     ai_service: AIService = Depends(get_ai_service)
 ):
