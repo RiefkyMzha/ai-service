@@ -11,7 +11,10 @@ from starlette.concurrency import run_in_threadpool
 
 from app.core.config import settings
 from app.core.data_loader import DataLoader
-from app.core.normalization import normalize_analysis_result
+from app.core.normalization import (
+    normalize_analysis_result,
+    normalize_emergency_incident_data,
+)
 from app.core.prompts import (
     DATA_BREACH_EMERGENCY_PROMPT,
     FINANCIAL_EMERGENCY_PROMPT,
@@ -382,10 +385,11 @@ class AIService:
         is_financial: bool,
     ) -> dict[str, Any]:
         image_url = await self._process_image_to_base64(image)
+        normalized_incident = normalize_emergency_incident_data(incident_data)
 
         incident_text = "\n".join(
             f"- {key}: {value}"
-            for key, value in incident_data.items()
+            for key, value in normalized_incident.items()
             if value
         )
 
@@ -441,7 +445,7 @@ class AIService:
             }
             mock_emergency = normalize_analysis_result(mock_emergency)
             contacts = self._resolve_emergency_contacts(
-                incident_data,
+                normalized_incident,
                 is_financial,
                 ai_kronologi=str(mock_emergency.get("ai_kronologi") or ""),
             )
@@ -453,7 +457,7 @@ class AIService:
         result = parse_ai_json(raw_result, "darurat")
         result = normalize_analysis_result(result)
         contacts = self._resolve_emergency_contacts(
-            incident_data,
+            normalized_incident,
             is_financial,
             ai_kronologi=str(result.get("ai_kronologi") or ""),
         )

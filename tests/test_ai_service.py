@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from app.core.config import settings
 from app.core.data_loader import DataLoader
+from app.core.normalization import normalize_emergency_incident_data
 from app.services.ai_service import AIService
 from tests.conftest import make_png, make_upload
 
@@ -347,5 +348,123 @@ def test_analyze_coerces_string_score_and_sets_optional_scam_type(
         "instagram": "@goodlifebca",
         "twitter": "@HaloBCA",
     }
+
+
+def test_normalize_emergency_incident_data_handles_bug_slug_and_clean_labels():
+    buggy_financial = normalize_emergency_incident_data(
+        {
+            "bank_korban": "bca",
+            "platform_kejadian": "whatsapp",
+            "tujuan_transaksi": "link,otp,Lainnya: investasi emas",
+        }
+    )
+    assert buggy_financial == {
+        "bank_korban": "BCA",
+        "platform_kejadian": "WhatsApp",
+        "tujuan_transaksi": "Pembelian barang/jasa, Hadiah/promo, Lainnya: investasi emas",
+    }
+
+    slug_financial = normalize_emergency_incident_data(
+        {
+            "bank_korban": "mandiri",
+            "platform_kejadian": "instagram",
+            "tujuan_transaksi": "pembelian-barang,biaya-admin,hadiah-promo,pinjaman",
+        }
+    )
+    assert slug_financial == {
+        "bank_korban": "Mandiri",
+        "platform_kejadian": "Instagram",
+        "tujuan_transaksi": "Pembelian barang/jasa, Biaya administrasi, Hadiah/promo, Pinjaman",
+    }
+
+    clean_financial = normalize_emergency_incident_data(
+        {
+            "bank_korban": "Bank Neo",
+            "platform_kejadian": "WhatsApp",
+            "tujuan_transaksi": "Pembelian barang/jasa,Biaya administrasi",
+        }
+    )
+    assert clean_financial == {
+        "bank_korban": "Bank Neo",
+        "platform_kejadian": "WhatsApp",
+        "tujuan_transaksi": "Pembelian barang/jasa, Biaya administrasi",
+    }
+
+    breach_data = normalize_emergency_incident_data(
+        {
+            "jenis_data": '["data-pribadi","media-sosial","perbankan","kartu","email"]',
+            "platform_kejadian": "whatsapp",
+            "tindakan_pelaku": '["link","data-pribadi","otp","menyamar","Lainnya: ancam sebar data"]',
+            "status_akses": "diketahuiLain",
+        }
+    )
+    assert breach_data == {
+        "jenis_data": (
+            "Data pribadi, Akun media sosial, Akun perbankan/finansial, "
+            "Data kartu kredit/debit, Akun email"
+        ),
+        "platform_kejadian": "WhatsApp",
+        "tindakan_pelaku": (
+            "Mengirim tautan mencurigakan, Meminta data pribadi, "
+            "Meminta OTP/PIN/kata sandi, Mengaku sebagai pihak tertentu, "
+            "Lainnya: ancam sebar data"
+        ),
+        "status_akses": "Diketahui pihak lain",
+    }
+    assert normalize_emergency_incident_data({"status_akses": "bisaAkses"})["status_akses"] == "Masih bisa diakses"
+    assert normalize_emergency_incident_data({"status_akses": "tidakBisaAkses"})["status_akses"] == "Tidak bisa diakses"
+    assert normalize_emergency_incident_data({"status_akses": "tidakTahu"})["status_akses"] == "Tidak tahu"
+
+
+def test_process_emergency_passes_normalized_labels_to_prompt_and_contact_resolver(
+    monkeypatch, service: AIService
+):
+    captured_messages = []
+
+    async def fake_call(self, messages):
+        nonlocal captured_messages
+        captured_messages = messages
+        return '{"ai_kronologi": "Kronologi", "langkah_penanganan": []}'
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_call)
+
+    res_fin = run(
+        service.process_emergency(
+            {
+                "bank_korban": "bca",
+                "platform_kejadian": "whatsapp",
+                "tujuan_transaksi": "link,otp",
+                "kronologi_user": "Transfer palsu",
+            },
+            None,
+            is_financial=True,
+        )
+    )
+    fin_user_text = captured_messages[1]["content"][0]["text"]
+    assert "- bank_korban: BCA" in fin_user_text
+    assert "- platform_kejadian: WhatsApp" in fin_user_text
+    assert "- tujuan_transaksi: Pembelian barang/jasa, Hadiah/promo" in fin_user_text
+    assert res_fin["official_contact"]["name"] == "Bank BCA (Bank Central Asia)"
+
+    res_breach = run(
+        service.process_emergency(
+            {
+                "jenis_data": '["kartu"]',
+                "platform_kejadian": "instagram",
+                "tindakan_pelaku": '["link","otp"]',
+                "status_akses": "tidakBisaAkses",
+                "kronologi_user": "Kartu debit bocor di pesan penipu",
+            },
+            None,
+            is_financial=False,
+        )
+    )
+    breach_user_text = captured_messages[1]["content"][0]["text"]
+    assert "- jenis_data: Data kartu kredit/debit" in breach_user_text
+    assert "- platform_kejadian: Instagram" in breach_user_text
+    assert "- tindakan_pelaku: Mengirim tautan mencurigakan, Meminta OTP/PIN/kata sandi" in breach_user_text
+    assert "- status_akses: Tidak bisa diakses" in breach_user_text
+    assert res_breach["official_contact"]["name"] == "Otoritas Jasa Keuangan (OJK)"
+
 
 
