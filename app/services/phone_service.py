@@ -38,6 +38,16 @@ def _mask_phone(number: str) -> str:
     return number[:5] + "*" * (len(number) - 7) + number[-2:]
 
 
+def _parse_tag_count(raw_value: Any) -> int | None:
+    if isinstance(raw_value, int) and not isinstance(raw_value, bool) and raw_value >= 0:
+        return raw_value
+    if isinstance(raw_value, str):
+        cleaned = raw_value.strip()
+        if cleaned.isdigit():
+            return int(cleaned)
+    return None
+
+
 def _get_cached_phone_result(cache_key: str) -> dict[str, Any] | None:
     if cache_key not in _PHONE_CACHE:
         return None
@@ -227,17 +237,31 @@ class PhoneService:
             if isinstance(display_name, str) and display_name.strip()
             else "Unknown"
         )
+        tag_count = _parse_tag_count(gtc_profile.get("tagCount"))
+        tag_count_label = (
+            str(tag_count)
+            if tag_count is not None
+            else (str(len(clean_tags)) if clean_tags else "Unknown")
+        )
+        if clean_tags:
+            tags_summary = ", ".join(clean_tags)
+        elif tag_count is not None and tag_count > 0:
+            tags_summary = None
+        else:
+            tags_summary = "No tags found"
 
-        from app.core.prompts import REASONING_PROMPT
+        from app.core.prompts import PHONE_ANALYSIS_PROMPT, REASONING_PROMPT
 
         gtc_context = (
             f"TARGET PHONE NUMBER: {normalized_phone}\n"
             f"GETCONTACT PROFILE NAME: {profile_name}\n"
-            f"GETCONTACT TAGS: {', '.join(clean_tags) if clean_tags else 'No tags found'}\n"
+            f"GETCONTACT TAG COUNT: {tag_count_label}\n"
         )
+        if tags_summary is not None:
+            gtc_context += f"GETCONTACT TAGS: {tags_summary}\n"
         
         messages = [
-            {"role": "system", "content": REASONING_PROMPT},
+            {"role": "system", "content": f"{REASONING_PROMPT}\n\n{PHONE_ANALYSIS_PROMPT}"},
             {
                 "role": "user",
                 "content": f"<untrusted_evidence>\n{gtc_context}</untrusted_evidence>",
@@ -255,7 +279,8 @@ class PhoneService:
 
         has_profile_name = isinstance(display_name, str) and bool(display_name.strip())
         has_tags = len(clean_tags) > 0
-        if has_profile_name or has_tags:
+        has_tag_count = tag_count is not None and tag_count > 0
+        if has_profile_name or has_tags or has_tag_count:
             _set_cached_phone_result(cache_key, result)
 
         return result

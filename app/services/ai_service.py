@@ -55,7 +55,7 @@ def parse_ai_json(raw_result: Any, context: str) -> dict[str, Any]:
 
 def finalize_ai_result(
     result: Dict[str, Any],
-    contacts: list[dict[str, str]],
+    contacts: list[dict[str, str | None]],
     schema: type[BaseModel],
     context: str,
 ) -> dict[str, Any]:
@@ -281,8 +281,10 @@ class AIService:
         return finalize_ai_result(result, contacts, AnalysisResponse, "analisis")
 
     @staticmethod
-    def _merge_contacts(*contact_lists: list[dict[str, str]]) -> list[dict[str, str]]:
-        merged: list[dict[str, str]] = []
+    def _merge_contacts(
+        *contact_lists: list[dict[str, str | None]],
+    ) -> list[dict[str, str | None]]:
+        merged: list[dict[str, str | None]] = []
         seen_names: set[str] = set()
         for items in contact_lists:
             for item in items:
@@ -300,7 +302,7 @@ class AIService:
         user_text: str,
         image_url: str | None,
         result: Dict[str, Any],
-    ) -> list[dict[str, str]]:
+    ) -> list[dict[str, str | None]]:
         user_contacts = self.data_loader.official_contacts_for(
             user_text, limit=_MAX_OFFICIAL_CONTACTS
         )
@@ -321,7 +323,7 @@ class AIService:
         incident_data: Dict[str, Any],
         is_financial: bool,
         ai_kronologi: str = "",
-    ) -> list[dict[str, str]]:
+    ) -> list[dict[str, str | None]]:
         ai_contacts = (
             self.data_loader.official_contacts_for(
                 ai_kronologi,

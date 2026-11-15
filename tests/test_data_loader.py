@@ -41,7 +41,13 @@ def test_match_bank_handles_url_and_dashes(loader: DataLoader):
 
 def test_official_contact_for_returns_phone_string(loader: DataLoader):
     contact = loader.official_contact_for("Halo, ini BCA. Akun Anda diblokir.")
-    assert contact == {"name": "Bank BCA (Bank Central Asia)", "phone": "1500888"}
+    assert contact == {
+        "name": "Bank BCA (Bank Central Asia)",
+        "phone": "1500888",
+        "email": "halobca@bca.co.id",
+        "instagram": "@goodlifebca",
+        "twitter": "@HaloBCA",
+    }
 
 
 def test_official_contact_for_unknown_bank(loader: DataLoader):
@@ -53,12 +59,12 @@ def test_find_bank_contact_backward_compatible(loader: DataLoader):
 
 
 def test_explicit_aliases_are_supported(tmp_path):
-    (tmp_path / "Bank_Call_Senter_Final.json").write_text(
+    (tmp_path / "Bank_Call_Center.json").write_text(
         json.dumps(
             [
                 {
                     "name": "Bank Contoh (Bank Contoh Indonesia)",
-                    "call": 1500123,
+                    "call": "1500123",
                     "aliases": ["bankcontoh", "bci"],
                 }
             ]
@@ -73,6 +79,9 @@ def test_explicit_aliases_are_supported(tmp_path):
     assert loader.official_contact_for("bci") == {
         "name": "Bank Contoh (Bank Contoh Indonesia)",
         "phone": "1500123",
+        "email": None,
+        "instagram": None,
+        "twitter": None,
     }
 
 
@@ -190,3 +199,52 @@ def test_official_contacts_for_deduplicates_and_caps_at_three(loader: DataLoader
         "Bank BRI (Bank Rakyat Indonesia)",
         "Bank BNI (Bank Negara Indonesia)",
     ]
+
+
+def test_official_contact_preserves_leading_zero_and_dual_twitter(loader: DataLoader):
+    mega = loader.official_contact_for("Hubungi Bank Mega segera")
+    krom = loader.official_contact_for("Akun Krom Bank diblokir")
+    bri = loader.official_contact_for("Ini CS BRI resmi")
+
+    assert mega is not None and mega["phone"] == "08041500010"
+    assert krom is not None and krom["phone"] == "02150996920"
+    assert bri is not None and bri["twitter"] == "@BANKBRI_ID / @kontakBRI"
+
+
+def test_official_contact_converts_dash_to_none(loader: DataLoader):
+    kalbar = loader.official_contact_for("Transfer Bank Kalbar")
+    agricole = loader.official_contact_for("Hubungi Credit Agricole")
+
+    assert kalbar == {
+        "name": "Bank Kalbar",
+        "phone": "08071888123",
+        "email": "customercare@bankkalbar.co.id",
+        "instagram": None,
+        "twitter": None,
+    }
+    assert agricole == {
+        "name": "Crédit Agricole CIB",
+        "phone": "02129522663",
+        "email": None,
+        "instagram": None,
+        "twitter": "@CA_CIB_EN",
+    }
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("jenius", "Jenius"),
+        ("bank jenius", "Jenius"),
+        ("icici", "ICICI Bank"),
+        ("credit agricole", "Crédit Agricole CIB"),
+        ("bank credit agricole", "Crédit Agricole CIB"),
+        ("cib", "Crédit Agricole CIB"),
+    ],
+)
+def test_match_bank_updated_names_and_aliases(
+    loader: DataLoader, text: str, expected: str
+):
+    bank = loader.match_bank(text)
+    assert bank is not None
+    assert bank["name"] == expected

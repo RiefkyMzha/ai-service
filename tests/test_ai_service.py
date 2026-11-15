@@ -343,6 +343,9 @@ def test_analyze_coerces_string_score_and_sets_optional_scam_type(
     assert result["official_contact"] == {
         "name": "Bank BCA (Bank Central Asia)",
         "phone": "1500888",
+        "email": "halobca@bca.co.id",
+        "instagram": "@goodlifebca",
+        "twitter": "@HaloBCA",
     }
 
 

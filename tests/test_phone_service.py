@@ -110,6 +110,9 @@ def test_analyze_phone_enriches_contact_from_profile(monkeypatch, service: Phone
     assert result["official_contact"] == {
         "name": "Bank BCA (Bank Central Asia)",
         "phone": "1500888",
+        "email": "halobca@bca.co.id",
+        "instagram": "@goodlifebca",
+        "twitter": "@HaloBCA",
     }
     assert result["risk_score"] == 85
 
@@ -464,5 +467,61 @@ def test_analyze_phone_schema_error_returns_500_without_poisoning_cache(
 
     assert exc.value.status_code == 500
     assert exc.value.detail == "Format output AI cacat."
+    assert len(_PHONE_CACHE) == 0
+
+
+def test_analyze_phone_includes_tag_count_in_context(monkeypatch, service: PhoneService):
+    monkeypatch.setattr(PhoneService, "_get_active_cred", lambda self: VALID_CRED)
+    monkeypatch.setattr(
+        PhoneService,
+        "_gtc_call",
+        lambda self, endpoint, payload, cred: (
+            200,
+            {"result": {"profile": {"displayName": None, "tagCount": 18}, "tags": []}},
+        ),
+    )
+
+    captured = []
+
+    async def fake_call(self, messages):
+        nonlocal captured
+        captured = messages
+        return ANALYSIS_JSON
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_call)
+    run(service.analyze_phone_number("081234567890"))
+
+    system_msg = captured[0]["content"]
+    user_msg = captured[1]["content"]
+    assert "PHONE RULE:" in system_msg
+    assert "GETCONTACT TAG COUNT: 18" in user_msg
+    assert "GETCONTACT TAGS:" not in user_msg
+    assert len(_PHONE_CACHE) == 1
+
+
+def test_analyze_phone_handles_invalid_tag_count_safely(monkeypatch, service: PhoneService):
+    monkeypatch.setattr(PhoneService, "_get_active_cred", lambda self: VALID_CRED)
+    monkeypatch.setattr(
+        PhoneService,
+        "_gtc_call",
+        lambda self, endpoint, payload, cred: (
+            200,
+            {"result": {"profile": {"tagCount": True}, "tags": []}},
+        ),
+    )
+
+    captured = []
+
+    async def fake_call(self, messages):
+        nonlocal captured
+        captured = messages
+        return ANALYSIS_JSON
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_call)
+    run(service.analyze_phone_number("081234567890"))
+
+    user_msg = captured[1]["content"]
+    assert "GETCONTACT TAG COUNT: Unknown" in user_msg
+    assert "GETCONTACT TAGS: No tags found" in user_msg
     assert len(_PHONE_CACHE) == 0
 

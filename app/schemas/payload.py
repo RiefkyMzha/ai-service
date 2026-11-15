@@ -10,6 +10,9 @@ class OfficialContact(BaseModel):
     name: str
     phone: str
     whatsapp: Optional[str] = None
+    email: Optional[str] = None
+    instagram: Optional[str] = None
+    twitter: Optional[str] = None
 
 class ActionStep(BaseModel):
     title: str

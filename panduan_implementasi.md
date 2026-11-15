@@ -237,13 +237,19 @@ Ketika frontend menerima payload respons analisis:
   "official_contact": {
     "name": "Bank BCA (Bank Central Asia)",
     "phone": "1500888",
-    "whatsapp": null
+    "whatsapp": null,
+    "email": "halobca@bca.co.id",
+    "instagram": "@goodlifebca",
+    "twitter": "@HaloBCA"
   },
   "official_contacts": [
     {
       "name": "Bank BCA (Bank Central Asia)",
       "phone": "1500888",
-      "whatsapp": null
+      "whatsapp": null,
+      "email": "halobca@bca.co.id",
+      "instagram": "@goodlifebca",
+      "twitter": "@HaloBCA"
     }
   ]
 }

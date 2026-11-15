@@ -50,6 +50,25 @@ def _normalize(value: str) -> str:
     return _WORD_SPLIT.sub(" ", text.lower()).strip()
 
 
+def _clean_optional_contact(value: Any) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    if not cleaned or cleaned == "-":
+        return None
+    return cleaned
+
+
+def _format_official_contact(bank: Dict[str, Any]) -> Dict[str, Optional[str]]:
+    return {
+        "name": str(bank.get("name")),
+        "phone": str(bank.get("call")),
+        "email": _clean_optional_contact(bank.get("email")),
+        "instagram": _clean_optional_contact(bank.get("instagram")),
+        "twitter": _clean_optional_contact(bank.get("twitter")),
+    }
+
+
 class DataLoader:
     def __init__(self, data_dir: Path | str = Path("app/data")) -> None:
         self.data_dir = Path(data_dir)
@@ -63,7 +82,9 @@ class DataLoader:
 
     def _load_data(self) -> None:
         try:
-            bank_file = self.data_dir / "Bank_Call_Senter_Final.json"
+            bank_file = self.data_dir / "Bank_Call_Center.json"
+            if not bank_file.exists():
+                bank_file = self.data_dir / "Bank_Call_Senter_Final.json"
             if bank_file.exists():
                 raw = json.loads(bank_file.read_text("utf-8"))
                 if isinstance(raw, list):
@@ -295,7 +316,7 @@ class DataLoader:
         self,
         *texts: str,
         exclude_names: Optional[set[str]] = None,
-    ) -> Optional[Dict[str, str]]:
+    ) -> Optional[Dict[str, Optional[str]]]:
         """Bangun official_contact hanya dari bank yang terdaftar di data statis."""
         found = self._best_match(texts, exclude_names=exclude_names)
         if not found:
@@ -311,24 +332,21 @@ class DataLoader:
             )
             return None
 
-        return {"name": str(bank.get("name")), "phone": str(call)}
+        return _format_official_contact(bank)
 
     def official_contacts_for(
         self,
         *texts: str,
         limit: int = 3,
         exclude_names: Optional[set[str]] = None,
-    ) -> List[Dict[str, str]]:
+    ) -> List[Dict[str, Optional[str]]]:
         banks = self.match_banks(
             *texts,
             limit=limit,
             exclude_names=exclude_names,
             require_call=True,
         )
-        return [
-            {"name": str(bank.get("name")), "phone": str(bank.get("call"))}
-            for bank in banks
-        ]
+        return [_format_official_contact(bank) for bank in banks]
 
     def find_bank_contact(self, bank_name: str) -> Dict[str, Any] | None:
         """Kompatibilitas: cari entri bank berdasarkan nama (case-insensitive)."""

@@ -125,3 +125,9 @@ OUTPUT: Return ONLY valid JSON:
 """
 
 EMERGENCY_PROMPT = FINANCIAL_EMERGENCY_PROMPT
+
+PHONE_ANALYSIS_PROMPT = (
+    "PHONE RULE: `GETCONTACT TAG COUNT` is the total number of users who saved this contact, NOT scam reports. "
+    "If `PROFILE NAME` (and `TAGS` when present) shows no scam/impersonation indicators, assign `risk_score` 0-19 (`No Scam Indicators`) regardless of tag count; "
+    "use tag count only to reinforce an already suspicious profile or tag."
+)

@@ -61,6 +61,9 @@ Error validasi (422) mengikuti format Pydantic:
 | `name` | string | ya | Nama bank/institusi dari whitelist |
 | `phone` | string | ya | Nomor call center (selalu string) |
 | `whatsapp` | string \| null | tidak | Umumnya `null` saat ini |
+| `email` | string \| null | tidak | Alamat email resmi (atau `null` bila tidak tersedia) |
+| `instagram` | string \| null | tidak | Akun Instagram resmi (atau `null` bila tidak tersedia) |
+| `twitter` | string \| null | tidak | Akun X/Twitter resmi (dapat berisi lebih dari satu akun dipisah `/`, atau `null`) |
 
 ### 2.2 `AnalysisResponse`
 
@@ -121,7 +124,10 @@ Respons `200`:
   "official_contact": {
     "name": "Bank BCA (Bank Central Asia)",
     "phone": "1500888",
-    "whatsapp": null
+    "whatsapp": null,
+    "email": "halobca@bca.co.id",
+    "instagram": "@goodlifebca",
+    "twitter": "@HaloBCA"
   }
 }
 ```
@@ -215,7 +221,10 @@ Respons `200`:
   "official_contact": {
     "name": "Bank BCA (Bank Central Asia)",
     "phone": "1500888",
-    "whatsapp": null
+    "whatsapp": null,
+    "email": "halobca@bca.co.id",
+    "instagram": "@goodlifebca",
+    "twitter": "@HaloBCA"
   }
 }
 ```
@@ -256,7 +265,7 @@ Dipakai untuk memantau status layanan dan mengetahui apakah server sedang berjal
 
 ## 4. Aturan `official_contact` & `official_contacts`
 
-- Field opsional, tetapi `official_contact` **wajib terisi** (dan `official_contacts` menampung hingga **3 bank unik**) bila bank terdeteksi ada di `app/data/Bank_Call_Senter_Final.json` (100 entri, bentuk `{name, call, aliases?}`).
+- Field opsional, tetapi `official_contact` **wajib terisi** (dan `official_contacts` menampung hingga **3 bank unik**) bila bank terdeteksi ada di `app/data/Bank_Call_Center.json` (97 entri, bentuk `{name, call, email, instagram, twitter, aliases?}`; nilai `"-"` pada email/medsos diubah menjadi `null`).
 - Sumber bukti (berurutan):
   - `analyze/text` & `analyze/image`: `user_text` → `reasons` hasil pembacaan gambar (bila ada gambar).
   - `analyze/phone`: profil dan tag GetContact.

@@ -1,0 +1,683 @@
+[
+    {
+        "name": "Bank BRI (Bank Rakyat Indonesia)",
+        "call": "1500017",
+        "email": "callbri@bri.co.id",
+        "instagram": "@bankbri_id",
+        "twitter": "@BANKBRI_ID / @kontakBRI"
+    },
+    {
+        "name": "Bank Saqu (Eks Bank Jasa Jakarta)",
+        "call": "1500388",
+        "email": "dibantu@banksaqu.co.id",
+        "instagram": "@banksaqu",
+        "twitter": "@banksaqu"
+    },
+    {
+        "name": "Krom Bank (Eks Bank Bisnis)",
+        "call": "02150996920",
+        "email": "support@krom.id",
+        "instagram": "@krombank",
+        "twitter": "@krombank"
+    },
+    {
+        "name": "Bank BNP Paribas Indonesia",
+        "call": "622150814789",
+        "email": "contact.indonesia@asia.bnpparibas.com",
+        "instagram": "@bnpparibas_id",
+        "twitter": "-"
+    },
+    {
+        "name": "ICICI Bank",
+        "call": "62212303867",
+        "email": "customer.care@icici.bank.in",
+        "instagram": "@icicibank",
+        "twitter": "@ICICIBank"
+    },
+    {
+        "name": "Bank Mandiri Taspen",
+        "call": "14024",
+        "email": "info@bankmantap.co.id",
+        "instagram": "@bankmandiritaspen",
+        "twitter": "@BankMantap_ID"
+    },
+    {
+        "name": "Bank BCA (Bank Central Asia)",
+        "call": "1500888",
+        "email": "halobca@bca.co.id",
+        "instagram": "@goodlifebca",
+        "twitter": "@HaloBCA"
+    },
+    {
+        "name": "Bank Mandiri",
+        "call": "14000",
+        "email": "mandiricare@bankmandiri.co.id",
+        "instagram": "@bankmandiri",
+        "twitter": "@bankmandiri / @mandiricare"
+    },
+    {
+        "name": "Bank BNI (Bank Negara Indonesia)",
+        "call": "1500046",
+        "email": "bnicall@bni.co.id",
+        "instagram": "@bni46",
+        "twitter": "@BNI / @BNICustomerCare"
+    },
+    {
+        "name": "Bank Tabungan Negara (Bank BTN)",
+        "call": "1500286",
+        "email": "btncontactcenter@btn.co.id",
+        "instagram": "@bankbtn",
+        "twitter": "@BankBTN / @BankBTNcoid"
+    },
+    {
+        "name": "Bank Mega",
+        "call": "08041500010",
+        "email": "corsec@bankmega.com",
+        "instagram": "@bankmegaid",
+        "twitter": "@BankMegaID"
+    },
+    {
+        "name": "Allo Bank (Eks Bank Harda)",
+        "call": "08041104110",
+        "email": "cbcontact@allobank.com",
+        "instagram": "@allobank",
+        "twitter": "@AlloBankID"
+    },
+    {
+        "name": "SeaBank (Eks Bank Kesejahteraan Ekonomi)",
+        "call": "1500130",
+        "email": "cs@seabank.co.id",
+        "instagram": "@seabank.id",
+        "twitter": "@SeaBankID"
+    },
+    {
+        "name": "Bank Jago (Eks Bank Artos Indonesia)",
+        "call": "1500746",
+        "email": "tanya@jago.com",
+        "instagram": "@jadijago",
+        "twitter": "@tanyajago"
+    },
+    {
+        "name": "Bank UOB Indonesia",
+        "call": "14008",
+        "email": "UOBcare@uob.co.id",
+        "instagram": "@uob.id",
+        "twitter": "@UOB_ID"
+    },
+    {
+        "name": "TMRW by UOB Indonesia",
+        "call": "14008",
+        "email": "UOBcare@uob.co.id",
+        "instagram": "@tmrwbyuob.id",
+        "twitter": "@TMRWID"
+    },
+    {
+        "name": "Bank CIMB Niaga",
+        "call": "6281197814041",
+        "email": "14041@cimbniaga.co.id",
+        "instagram": "@cimb_niaga",
+        "twitter": "@CIMBNiaga"
+    },
+    {
+        "name": "Bank SMBC Indonesia",
+        "call": "1500365",
+        "email": "smbcicare@smbci.com",
+        "instagram": "@smbc.id",
+        "twitter": "-"
+    },
+    {
+        "name": "Jenius",
+        "call": "1500365",
+        "email": "jenius-help@btpn.com",
+        "instagram": "@jeniusconnect",
+        "twitter": "@jeniushelp",
+        "aliases": ["bank jenius"]
+    },
+    {
+        "name": "Permata Bank",
+        "call": "1500090",
+        "email": "care@permatabank.co.id",
+        "instagram": "@permatabank",
+        "twitter": "@PermataCare"
+    },
+    {
+        "name": "Bank BII Maybank",
+        "call": "1500611",
+        "email": "customercare@maybank.co.id",
+        "instagram": "@maybankid",
+        "twitter": "@MaybankID"
+    },
+    {
+        "name": "Bank Sinarmas",
+        "call": "1500153",
+        "email": "care@banksinarmas.com",
+        "instagram": "@banksinarmas",
+        "twitter": "@BankSinarmas"
+    },
+    {
+        "name": "Bank Commonwealth",
+        "call": "1500030",
+        "email": "customercare@commbank.co.id",
+        "instagram": "@commbank_id",
+        "twitter": "@CommBank_ID"
+    },
+    {
+        "name": "Bank OCBC NISP",
+        "call": "1500999",
+        "email": "tanya@ocbc.id",
+        "instagram": "@ocbc_indonesia",
+        "twitter": "@tanyaOCBC"
+    },
+    {
+        "name": "KB Bank Bukopin",
+        "call": "14005",
+        "email": "halokb@kbbukopin.com",
+        "instagram": "@kbbukopin",
+        "twitter": "@kbbukopin"
+    },
+    {
+        "name": "Bank Kalbar",
+        "call": "08071888123",
+        "email": "customercare@bankkalbar.co.id",
+        "instagram": "-",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Kaltimtara",
+        "call": "1500124",
+        "email": "sekretariat@bankaltimtara.co.id",
+        "instagram": "@bankaltimtara",
+        "twitter": "@bankaltimtara"
+    },
+    {
+        "name": "Bank Maluku Malut",
+        "call": "08071500500",
+        "email": "info@bankmalukumalut.co.id",
+        "instagram": "@bankmalukumalut_official",
+        "twitter": "@BMalukuMalut61"
+    },
+    {
+        "name": "Bank Maspion",
+        "call": "1500889",
+        "email": "cs@bankmaspion.co.id",
+        "instagram": "@bankmaspion",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Mestika",
+        "call": "14083",
+        "email": "corsec@bankmestika.co.id",
+        "instagram": "@bankmestika",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank MNC",
+        "call": "1500188",
+        "email": "customer_care@mncbank.co.id",
+        "instagram": "@officialmncbank",
+        "twitter": "@MNCBank"
+    },
+    {
+        "name": "Bank Multiarta Sentosa (Bank Mas)",
+        "call": "1500011",
+        "email": "care@bankmas.co.id",
+        "instagram": "@bankmas_id",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank National Nobu",
+        "call": "1500278",
+        "email": "nobucall@nobubank.com",
+        "instagram": "@nobubank",
+        "twitter": "@NobuBank"
+    },
+    {
+        "name": "Bank of China Jakarta Branch",
+        "call": "62215209988",
+        "email": "callcenter@bankofchina.co.id",
+        "instagram": "-",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Index",
+        "call": "1500670",
+        "email": "customercare@bankindex.co.id",
+        "instagram": "@bankindex",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank SulutGo (Sulawesi Utara dan Gorontalo)",
+        "call": "1500659",
+        "email": "corsec@banksulutgo.co.id",
+        "instagram": "@banksulutgo",
+        "twitter": "@BankSulutGo"
+    },
+    {
+        "name": "Bank Papua",
+        "call": "1500138",
+        "email": "halobankpapua@bankpapua.co.id",
+        "instagram": "@bankpapua1966",
+        "twitter": "@bankpapua1966"
+    },
+    {
+        "name": "Bank Kalteng",
+        "call": "1500526",
+        "email": "callcenter@bankkalteng.co.id",
+        "instagram": "@bankkalteng",
+        "twitter": "-"
+    },
+    {
+        "name": "Citibank",
+        "call": "1500335",
+        "email": "id.citiphone@citi.com",
+        "instagram": "@citiindonesia",
+        "twitter": "@Citi"
+    },
+    {
+        "name": "Bank DBS Indonesia",
+        "call": "08041500327",
+        "email": "dbsidcustomer@dbs.com",
+        "instagram": "@dbsbankid",
+        "twitter": "@dbsbankid"
+    },
+    {
+        "name": "Bank Neo Commerce (Akulaku)",
+        "call": "1500190",
+        "email": "customercare@bankneo.co.id",
+        "instagram": "@bankneocommerce",
+        "twitter": "@bankneocommerce"
+    },
+    {
+        "name": "Bank Panin",
+        "call": "1500678",
+        "email": "panin@panin.co.id",
+        "instagram": "@paninbank.official",
+        "twitter": "@paninbank"
+    },
+    {
+        "name": "Bank HSBC Indonesia",
+        "call": "1500700",
+        "email": "contact@hsbc.co.id",
+        "instagram": "@hsbc_id",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Mayapada",
+        "call": "1500029",
+        "email": "customercare@bankmayapada.com",
+        "instagram": "@bankmayapadaofficial",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Syariah Indonesia (BSI)",
+        "call": "14040",
+        "email": "contactus@bankbsi.co.id",
+        "instagram": "@banksyariahindonesia",
+        "twitter": "@bankbsi_id"
+    },
+    {
+        "name": "Bank Mega Syariah",
+        "call": "08041500010",
+        "email": "customercare@megasyariah.co.id",
+        "instagram": "@bankmegasyariah",
+        "twitter": "@MegaSyariah"
+    },
+    {
+        "name": "Bank Aladin Syariah (Eks Bank Maybank Indocorp)",
+        "call": "02185500947",
+        "email": "cs@aladinbank.id",
+        "instagram": "@aladinbank.id",
+        "twitter": "@aladinbank_id"
+    },
+    {
+        "name": "Bank BCA Syariah",
+        "call": "1500888",
+        "email": "halobca@bca.co.id",
+        "instagram": "@bcasyariah",
+        "twitter": "@bcasyariah"
+    },
+    {
+        "name": "Bank CIMB Niaga Syariah",
+        "call": "6281197814041",
+        "email": "14041@cimbniaga.co.id",
+        "instagram": "@cimb_niaga",
+        "twitter": "@cimbniaga"
+    },
+    {
+        "name": "Bank Muamalat",
+        "call": "1500016",
+        "email": "salammuamalat@bankmuamalat.co.id",
+        "instagram": "@bank.muamalat",
+        "twitter": "@BankMuamalat"
+    },
+    {
+        "name": "Bank BTPN Syariah",
+        "call": "1500300",
+        "email": "cs@btpnsyariah.com",
+        "instagram": "@btpnsyariah",
+        "twitter": "@btpnsyariah"
+    },
+    {
+        "name": "Bank KB Bukopin Syariah",
+        "call": "1500666",
+        "email": "halokb@kbbukopinsyariah.com",
+        "instagram": "@kbbukopinsyariah",
+        "twitter": "-"
+    },
+    {
+        "name": "BTN Syariah",
+        "call": "1500286",
+        "email": "btncontactcenter@btn.co.id",
+        "instagram": "@btnsyariah",
+        "twitter": "@BankBTN"
+    },
+    {
+        "name": "Bank BJB Syariah",
+        "call": "0221500727",
+        "email": "halobjbs@bjbsyariah.co.id",
+        "instagram": "@bjbsyariah",
+        "twitter": "@bjbsyariah"
+    },
+    {
+        "name": "Bank Panin Dubai Syariah",
+        "call": "0216313700",
+        "email": "corsec@panindubaisyariah.co.id",
+        "instagram": "@panindubaisyariah",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Aceh Syariah",
+        "call": "1500845",
+        "email": "contactcenter@bankaceh.co.id",
+        "instagram": "@bankacehofficial",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank NTB Syariah",
+        "call": "1500667",
+        "email": "corsec@bankntbsyariah.co.id",
+        "instagram": "-",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank DKI Jakarta",
+        "call": "1500351",
+        "email": "cs@bankdki.co.id",
+        "instagram": "@bank.dki",
+        "twitter": "@bank_dki"
+    },
+    {
+        "name": "Bank BPD Banten",
+        "call": "1500410",
+        "email": "corporate.secretary@bankbanten.co.id",
+        "instagram": "-",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Jabar dan Banten (Bank BJB)",
+        "call": "14049",
+        "email": "bjbcare@bankbjb.co.id",
+        "instagram": "@bankbjb",
+        "twitter": "@infobankbjb"
+    },
+    {
+        "name": "BPD DIY (Yogyakarta)",
+        "call": "1500061",
+        "email": "contactcenter@bpddiy.co.id",
+        "instagram": "@bpddiy",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Jateng",
+        "call": "14066",
+        "email": "callcenter@bankjateng.co.id",
+        "instagram": "@bankjateng",
+        "twitter": "@bankjatengku"
+    },
+    {
+        "name": "Bank Jatim",
+        "call": "14044",
+        "email": "info@bankjatim.co.id",
+        "instagram": "@bankjatim",
+        "twitter": "@bank_jatim"
+    },
+    {
+        "name": "Bank Aceh",
+        "call": "1500845",
+        "email": "contactcenter@bankaceh.co.id",
+        "instagram": "@bankacehofficial",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank QNB Indonesia",
+        "call": "02130055300",
+        "email": "contact.center@qnb.co.id",
+        "instagram": "@qnbindonesia",
+        "twitter": "@qnbindonesia"
+    },
+    {
+        "name": "Bank SBI Indonesia",
+        "call": "08001724636",
+        "email": "customercare@sbiindo.com",
+        "instagram": "@banksbiindonesia",
+        "twitter": "@sbiindonesia_"
+    },
+    {
+        "name": "Bank Keb Hana",
+        "call": "1500021",
+        "email": "info@hanabank.co.id",
+        "instagram": "@hanabank.id",
+        "twitter": "-"
+    },
+    {
+        "name": "bLu/Bank Digital BCA",
+        "call": "1500668",
+        "email": "haloblu@bca.co.id",
+        "instagram": "@blubybcadigital",
+        "twitter": "@HaloBlu"
+    },
+    {
+        "name": "Bank Ina Perdana",
+        "call": "1500738",
+        "email": "corsec@bankina.co.id",
+        "instagram": "@bankinaperdana",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank CCB Indonesia",
+        "call": "0215663809",
+        "email": "corsec@idn.ccb.com",
+        "instagram": "@ccbindonesia",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Capital Indonesia",
+        "call": "1500289",
+        "email": "corporate.secretary@bankcapital.co.id",
+        "instagram": "@bankcapital.id",
+        "twitter": "-"
+    },
+    {
+        "name": "Line Bank",
+        "call": "1500021",
+        "email": "ask@linebank.co.id",
+        "instagram": "@linebankid",
+        "twitter": "@linebankid"
+    },
+    {
+        "name": "Bank Artha Graha International",
+        "call": "08001918880",
+        "email": "customercare@arthagraha.com",
+        "instagram": "@bankarthagraha",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Index Selindo",
+        "call": "1500670",
+        "email": "customercare@bankindex.co.id",
+        "instagram": "@bankindex",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Jasa Jakarta",
+        "call": "1500388",
+        "email": "cs@bjj.co.id",
+        "instagram": "@bankjasajakarta",
+        "twitter": "-"
+    },
+    {
+        "name": "BPR KS (BPR Karyajatnika Sadaya)",
+        "call": "0224556677",
+        "email": "callcenter@bprks.co.id",
+        "instagram": "@bprks_official",
+        "twitter": "-"
+    },
+    {
+        "name": "Batara ePos",
+        "call": "1500286",
+        "email": "halopos@posindonesia.co.id",
+        "instagram": "@posindonesia.ig",
+        "twitter": "@PosIndonesia"
+    },
+    {
+        "name": "Bank CTBC (China Trust) Indonesia",
+        "call": "08071221111",
+        "email": "callcenter@ctbcbank.co.id",
+        "instagram": "-",
+        "twitter": "-"
+    },
+    {
+        "name": "China Construction Bank Indonesia",
+        "call": "0215663809",
+        "email": "corsec@idn.ccb.com",
+        "instagram": "@ccbindonesia",
+        "twitter": "-"
+    },
+    {
+        "name": "Crédit Agricole CIB",
+        "call": "02129522663",
+        "email": "-",
+        "instagram": "-",
+        "twitter": "@CA_CIB_EN",
+        "aliases": ["credit agricole", "bank credit agricole", "bank credit agricole indosuez"]
+    },
+    {
+        "name": "Amar Bank",
+        "call": "02140005859",
+        "email": "tanya@amarbank.co.id",
+        "instagram": "@amarbank",
+        "twitter": "@amarbank"
+    },
+    {
+        "name": "Bank Sumut",
+        "call": "14002",
+        "email": "callcenter@banksumut.com",
+        "instagram": "@banksumut",
+        "twitter": "@banksumut"
+    },
+    {
+        "name": "Bank Nagari",
+        "call": "150234",
+        "email": "callcenter@banknagari.co.id",
+        "instagram": "@banknagari",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank BPD Bali",
+        "call": "1500844",
+        "email": "bpdbali@bpdbali.co.id",
+        "instagram": "-",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Jtrust Indonesia",
+        "call": "1500615",
+        "email": "customercare@jtrustbank.co.id",
+        "instagram": "@jtrustbank",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Bumi Arta",
+        "call": "0212300893",
+        "email": "corsec@bankbumiarta.co.id",
+        "instagram": "@bankbumiarta",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Riau Kepri",
+        "call": "1500470",
+        "email": "corsec@brksyariah.co.id",
+        "instagram": "-",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Dipo International (Bank Sahabat Sampoerna)",
+        "call": "1500035",
+        "email": "hq@banksampoerna.com",
+        "instagram": "@banksampoerna",
+        "twitter": "-"
+    },
+    {
+        "name": "IBK Bank Indonesia",
+        "call": "1500978",
+        "email": "callcenter@ibk.co.id",
+        "instagram": "@ibkbank.id",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Sulselbar",
+        "call": "1500855",
+        "email": "ptbpd@banksulselbar.co.id",
+        "instagram": "-",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Sumselbabel",
+        "call": "1500711",
+        "email": "corsec@banksumselbabel.com",
+        "instagram": "-",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Victoria",
+        "call": "1500977",
+        "email": "customercare@victoriabank.co.id",
+        "instagram": "@bankvictoria",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Victoria Syariah",
+        "call": "0215600467",
+        "email": "corsec@bankvictoriasyariah.co.id",
+        "instagram": "@bankvictoriasyariah",
+        "twitter": "-"
+    },
+    {
+        "name": "Bank Woori Saudara (BWS)",
+        "call": "1500012",
+        "email": "corsec@bankwoorisaudara.com",
+        "instagram": "@bankwoorisaudara",
+        "twitter": "-"
+    },
+    {
+        "name": "Standard Chartered Bank",
+        "call": "02157999988",
+        "email": "id.contactcentre@sc.com",
+        "instagram": "@stanchartid",
+        "twitter": "-"
+    },
+    {
+        "name": "Mitsubishi UFJ Financial Group (MUFG)",
+        "call": "622130048200",
+        "email": "-",
+        "instagram": "-",
+        "twitter": "-"
+    },
+    {
+        "name": "Otoritas Jasa Keuangan (OJK)",
+        "call": "157",
+        "email": "konsumen@ojk.go.id",
+        "instagram": "@ojkindonesia",
+        "twitter": "@ojkindonesia"
+    }
+]
