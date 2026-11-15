@@ -17,7 +17,7 @@ Kontrak implementasi untuk microservice AI CegahScam. Dokumen ini adalah acuan t
 - Service ini **tidak** membuat PDF, tidak menyimpan riwayat, dan tidak menulis ke database. Itu tanggung jawab backend utama aplikasi web.
 - **Autentikasi:** semua endpoint di bawah `/api/v1` wajib mengirim header `X-API-Token: <CEGAHSCAM_API_TOKEN>`. Token dicek sebelum body dibaca. Tanpa/salah token → `401`; token server belum dikonfigurasi → `500` (fail closed). `GET /health`, `/docs`, `/redoc`, dan `/openapi.json` tetap terbuka tanpa token.
 - **CORS:** `CORSMiddleware` aktif secara bawaan (`CORS_ORIGINS=*` di `.env`, dapat dibatasi ke domain tertentu). Untuk keamanan token pada produksi, pemanggilan melalui backend utama aplikasi web tetap paling direkomendasikan.
-- Field opsional yang tidak diisi dikembalikan sebagai `null` (mis. `scam_type`, `official_contact`, `official_contact.whatsapp`).
+- Field opsional yang tidak diisi dikembalikan sebagai `null` (mis. `scam_type`, `official_contact`, `official_contact.whatsapp`, `email`, `instagram`, `twitter`).
 
 ### 1.1 Bentuk error
 
@@ -306,7 +306,7 @@ Contoh:
 - **Mode Mock (`MOCK_MODE=true`):** saat mengembangkan dan menguji integrasi di lokal, backend utama dapat menyalakan `MOCK_MODE=true` di `.env` AI Service agar seluruh endpoint mengembalikan respons simulasi sesuai skema dalam < 50 ms tanpa memerlukan `OPENROUTER_API_KEY` maupun `gtc_credentials.json` (autentikasi `X-API-Token`, validasi input, dan `official_contact` tetap aktif 100%).
 - **Timeout:** siapkan timeout ≥ 90 detik pada Mode Live (`MOCK_MODE=false`). Server memakai 25 detik untuk GetContact dan 85 detik untuk AI.
 - **Retry:** jangan retry otomatis pada `408`/`502`; setiap POST memanggil LLM dan mengonsumsi kuota.
-- **Null handling:** perlakukan `scam_type`, `official_contact`, dan `official_contact.whatsapp` sebagai opsional.
+- **Null handling:** perlakukan `scam_type`, `official_contact`, serta field opsional di dalamnya (`whatsapp`, `email`, `instagram`, `twitter`) sebagai nullable (`null` bila tidak tersedia).
 - **Non-determinisme:** skor dan redaksi dapat berbeda antar pemanggilan meski input sama.
 - **Caching & Penyimpanan:** layanan tidak menyimpan riwayat ke database; hanya `/api/v1/analyze/phone` yang memiliki *in-memory LRU+TTL cache* (maks. 100 nomor selama 24 jam) untuk menghemat kuota GetContact.
 - **Privasi:** gambar dan teks dikirim ke OpenRouter (pihak ketiga) untuk analisis pada Mode Live.
