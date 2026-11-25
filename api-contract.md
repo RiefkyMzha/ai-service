@@ -1,6 +1,6 @@
 # API Contract — CegahScam AI Service
 
-Kontrak implementasi untuk microservice AI CegahScam. Dokumen ini adalah acuan teknis untuk backend utama aplikasi web. Teknologi backend utama dan frontend belum ditetapkan; kontrak ini hanya bergantung pada HTTP REST.
+Kontrak implementasi untuk microservice AI CegahScam. 
 
 | Item | Nilai |
 |---|---|
