@@ -302,7 +302,6 @@ Contoh:
 
 ## 6. Catatan integrasi klien
 
-- **Panduan implementasi tim web:** lihat [`panduan_implementasi.md`](panduan_implementasi.md) untuk arsitektur komunikasi dengan tim web dan kajian opsi teknologi web.
 - **Mode Mock (`MOCK_MODE=true`):** saat mengembangkan dan menguji integrasi di lokal, backend utama dapat menyalakan `MOCK_MODE=true` di `.env` AI Service agar seluruh endpoint mengembalikan respons simulasi sesuai skema dalam < 50 ms tanpa memerlukan `OPENROUTER_API_KEY` maupun `gtc_credentials.json` (autentikasi `X-API-Token`, validasi input, dan `official_contact` tetap aktif 100%).
 - **Timeout:** siapkan timeout ≥ 90 detik pada Mode Live (`MOCK_MODE=false`). Server memakai 25 detik untuk GetContact dan 85 detik untuk AI.
 - **Retry:** jangan retry otomatis pada `408`/`502`; setiap POST memanggil LLM dan mengonsumsi kuota.
