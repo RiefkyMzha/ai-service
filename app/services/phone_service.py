@@ -16,8 +16,13 @@ from fastapi import HTTPException
 from starlette.concurrency import run_in_threadpool
 from app.core.config import settings
 from app.core.normalization import normalize_analysis_result
-from app.schemas.payload import AnalysisResponse
-from app.services.ai_service import AIService, finalize_ai_result, parse_ai_json
+from app.schemas.payload import ANALYSIS_LLM_JSON_SCHEMA, AnalysisResponse
+from app.services.ai_service import (
+    AIService,
+    finalize_ai_result,
+    parse_ai_json,
+    use_llm_response_schema,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -224,24 +229,37 @@ class PhoneService:
         raw_tags = gtc_result.get("tags")
         gtc_tags = raw_tags if isinstance(raw_tags, list) else []
 
-        clean_tags = [
+        raw_clean_tags = [
             tag.strip()
             for item in gtc_tags
             if isinstance(item, dict)
             and isinstance((tag := item.get("tag")), str)
             and tag.strip()
         ]
+        seen_tags: set[str] = set()
+        clean_tags: list[str] = []
+        for tag in raw_clean_tags:
+            trimmed = tag[:60].strip()
+            tag_key = trimmed.lower()
+            if not tag_key or tag_key in seen_tags:
+                continue
+            seen_tags.add(tag_key)
+            clean_tags.append(trimmed)
+            if len(clean_tags) >= 20:
+                break
+
         display_name = gtc_profile.get("displayName")
+        has_profile_name = isinstance(display_name, str) and bool(display_name.strip())
         profile_name = (
-            display_name.strip()
-            if isinstance(display_name, str) and display_name.strip()
+            display_name.strip()[:120]
+            if has_profile_name
             else "Unknown"
         )
         tag_count = _parse_tag_count(gtc_profile.get("tagCount"))
         tag_count_label = (
             str(tag_count)
             if tag_count is not None
-            else (str(len(clean_tags)) if clean_tags else "Unknown")
+            else (str(len(raw_clean_tags)) if raw_clean_tags else "Unknown")
         )
         if clean_tags:
             tags_summary = ", ".join(clean_tags)
@@ -269,7 +287,8 @@ class PhoneService:
         ]
         
         logger.info("Mengirim data GetContact ke LLM untuk analisis risiko...")
-        raw_result = await self.ai_service._call_openrouter(messages)
+        with use_llm_response_schema(ANALYSIS_LLM_JSON_SCHEMA):
+            raw_result = await self.ai_service._call_openrouter(messages)
         result = parse_ai_json(raw_result, "nomor")
         result = normalize_analysis_result(result)
         contacts = self.ai_service.data_loader.official_contacts_for(
@@ -277,8 +296,7 @@ class PhoneService:
         )
         result = finalize_ai_result(result, contacts, AnalysisResponse, "nomor")
 
-        has_profile_name = isinstance(display_name, str) and bool(display_name.strip())
-        has_tags = len(clean_tags) > 0
+        has_tags = len(raw_clean_tags) > 0
         has_tag_count = tag_count is not None and tag_count > 0
         if has_profile_name or has_tags or has_tag_count:
             _set_cached_phone_result(cache_key, result)

@@ -6,7 +6,7 @@ Microservice FastAPI yang menganalisis indikasi penipuan (teks, gambar, nomor te
 
 ```powershell
 git clone <url-repo> ai-service
-cd ai service
+cd ai-service
 python -m venv venv
 venv\Scripts\pip.exe install -r requirements.txt
 copy .env.example .env      # isi OPENROUTER_API_KEY dan CEGAHSCAM_API_TOKEN
@@ -88,11 +88,11 @@ app/
 │   └── phone_service.py     # GetContact, threadpool, cache in-memory, enrichment, MOCK_MODE
 │
 └── data/
-    ├── bank/                # Data JSON whitelist bank
-    ├── knowledge_base/      # Data knowledge base
-    └── credentials/         # Kredensial lokal
+    ├── Bank_Call_Center.json          # Data JSON whitelist bank & OJK
+    ├── knowledge_base_cegahscam.json  # Data knowledge base pola penipuan
+    └── gtc_credentials.json           # Kredensial lokal GetContact (git-ignored)
 │
-├── tests/                   # 124 automated tests (tanpa akses jaringan)
+├── tests/                   # 140 automated tests (tanpa akses jaringan)
 │
 └── eval/
     ├── evaluate_phase2.py   # Skrip evaluasi Fase 2
@@ -103,7 +103,7 @@ app/
 
 | Status | Arti |
 |---|---|
-| 400 | File bukan gambar yang didukung (JPG/PNG/WEBP) |
+| 400 | File bukan gambar yang didukung (JPG/PNG/WEBP), gambar rusak/format palsu, atau melebihi batas piksel aman |
 | 401 | Header `X-API-Token` tidak ada atau salah |
 | 408 | Timeout ke OpenRouter / GetContact |
 | 413 | Gambar > 15 MB |

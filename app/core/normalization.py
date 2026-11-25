@@ -123,6 +123,9 @@ _EMERGENCY_MULTI_FIELD_MAPPINGS = (
 )
 
 
+_MAX_NORMALIZED_MULTI_CHARS = 1_000
+
+
 def _normalize_single_value(raw_value: Any, mapping: Dict[str, str]) -> str:
     if not isinstance(raw_value, str) or not raw_value.strip():
         return str(raw_value or "")
@@ -147,12 +150,33 @@ def _normalize_multi_value(raw_value: Any, mapping: Dict[str, str]) -> str:
     else:
         items = text.split(",")
 
-    normalized_items = [
-        mapping.get(_normalize_key(item), item.strip())
-        for item in items
-        if item and item.strip()
-    ]
-    return ", ".join(normalized_items)
+    seen: set[str] = set()
+    selected: list[str] = []
+    current_len = 0
+
+    for item in items:
+        if not item or not item.strip():
+            continue
+        label = mapping.get(_normalize_key(item), item.strip())
+        dedup_key = _normalize_key(label)
+        if not dedup_key or dedup_key in seen:
+            continue
+        seen.add(dedup_key)
+
+        if not selected:
+            if len(label) > _MAX_NORMALIZED_MULTI_CHARS:
+                label = label[:_MAX_NORMALIZED_MULTI_CHARS]
+            selected.append(label)
+            current_len = len(label)
+            continue
+
+        added_len = 2 + len(label)
+        if current_len + added_len > _MAX_NORMALIZED_MULTI_CHARS:
+            break
+        selected.append(label)
+        current_len += added_len
+
+    return ", ".join(selected)
 
 
 def normalize_emergency_incident_data(incident_data: Dict[str, Any]) -> Dict[str, Any]:

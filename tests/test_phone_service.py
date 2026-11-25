@@ -525,3 +525,94 @@ def test_analyze_phone_handles_invalid_tag_count_safely(monkeypatch, service: Ph
     assert "GETCONTACT TAGS: No tags found" in user_msg
     assert len(_PHONE_CACHE) == 0
 
+
+def test_analyze_phone_caps_profile_name_and_deduplicates_tags(
+    monkeypatch, service: PhoneService
+):
+    long_name = "Penipu " + ("X" * 200)
+    raw_tags = (
+        [{"tag": "Penipu BCA"}, {"tag": "penipu bca"}]
+        + [{"tag": f"Tag-{i:02d}-" + ("Z" * 80)} for i in range(30)]
+    )
+    monkeypatch.setattr(PhoneService, "_get_active_cred", lambda self: VALID_CRED)
+    monkeypatch.setattr(
+        PhoneService,
+        "_gtc_call",
+        lambda self, endpoint, payload, cred: (
+            200,
+            {"result": {"profile": {"displayName": long_name}, "tags": raw_tags}},
+        ),
+    )
+
+    captured = []
+
+    async def fake_call(self, messages):
+        nonlocal captured
+        captured = messages
+        return ANALYSIS_JSON
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_call)
+    run(service.analyze_phone_number("081234567890"))
+
+    user_msg = captured[1]["content"]
+    profile_line = next(
+        line for line in user_msg.splitlines() if line.startswith("GETCONTACT PROFILE NAME: ")
+    )
+    tags_line = next(
+        line for line in user_msg.splitlines() if line.startswith("GETCONTACT TAGS: ")
+    )
+    profile_val = profile_line.removeprefix("GETCONTACT PROFILE NAME: ")
+    tag_items = tags_line.removeprefix("GETCONTACT TAGS: ").split(", ")
+
+    assert len(profile_val) == 120
+    assert len(tag_items) == 20
+    assert tag_items[0] == "Penipu BCA"
+    assert all(len(item) <= 60 for item in tag_items)
+    assert len({item.lower() for item in tag_items}) == len(tag_items)
+    assert len(_PHONE_CACHE) == 1
+
+
+def test_analyze_phone_uses_structured_output_schema_when_enabled(
+    monkeypatch, service: PhoneService
+):
+    from app.core.config import settings
+    from app.schemas.payload import ANALYSIS_LLM_JSON_SCHEMA
+
+    monkeypatch.setattr(settings, "OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "MOCK_MODE", False)
+    monkeypatch.setattr(PhoneService, "_get_active_cred", lambda self: VALID_CRED)
+    monkeypatch.setattr(
+        PhoneService,
+        "_gtc_call",
+        lambda self, endpoint, payload, cred: (
+            200,
+            {"result": {"profile": {"displayName": "Penipu BCA"}, "tags": []}},
+        ),
+    )
+
+    captured_formats: list[dict] = []
+
+    class DummyResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"choices": [{"message": {"content": ANALYSIS_JSON}}]}
+
+    def fake_post(url, headers, json, timeout):
+        captured_formats.append(json["response_format"])
+        return DummyResponse()
+
+    monkeypatch.setattr("app.services.ai_service.requests.post", fake_post)
+
+    monkeypatch.setattr(settings, "OPENROUTER_STRUCTURED_OUTPUTS", False)
+    run(service.analyze_phone_number("081234567890"))
+    assert captured_formats[0] == {"type": "json_object"}
+
+    _PHONE_CACHE.clear()
+    monkeypatch.setattr(settings, "OPENROUTER_STRUCTURED_OUTPUTS", True)
+    run(service.analyze_phone_number("081234567890"))
+    assert captured_formats[1] == ANALYSIS_LLM_JSON_SCHEMA
+
+
+

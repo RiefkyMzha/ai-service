@@ -49,7 +49,7 @@ Error validasi (422) mengikuti format Pydantic:
 | `text_content` | 1–10.000 karakter |
 | `platform` | 1–50 karakter |
 | `kronologi_user` | 1–10.000 karakter |
-| Gambar | `image/jpeg`, `image/jpg`, `image/png`, `image/webp`; ≤ 15 MB |
+| Gambar | `image/jpeg`, `image/jpg`, `image/png`, `image/webp`; ≤ 15 MB (diverifikasi format asli, dioptimasi resolusi, & dibersihkan metadata/EXIF sebelum analisis) |
 | `phone_number` | `08…`, `628…`, atau `+628…`; total 8–15 digit |
 
 ## 2. Skema respons
@@ -292,7 +292,7 @@ Contoh:
 | Status | Arti |
 |---|---|
 | 200 | Sukses |
-| 400 | MIME gambar tidak didukung |
+| 400 | MIME gambar tidak didukung, file gambar rusak, format biner palsu, atau melebihi batas piksel aman |
 | 408 | Timeout OpenRouter/GetContact |
 | 413 | Gambar > 15 MB |
 | 401 | Header `X-API-Token` tidak ada atau salah |
@@ -308,5 +308,19 @@ Contoh:
 - **Retry:** jangan retry otomatis pada `408`/`502`; setiap POST memanggil LLM dan mengonsumsi kuota.
 - **Null handling:** perlakukan `scam_type`, `official_contact`, serta field opsional di dalamnya (`whatsapp`, `email`, `instagram`, `twitter`) sebagai nullable (`null` bila tidak tersedia).
 - **Non-determinisme:** skor dan redaksi dapat berbeda antar pemanggilan meski input sama.
-- **Caching & Penyimpanan:** layanan tidak menyimpan riwayat ke database; hanya `/api/v1/analyze/phone` yang memiliki *in-memory LRU+TTL cache* (maks. 100 nomor selama 24 jam) untuk menghemat kuota GetContact.
-- **Privasi:** gambar dan teks dikirim ke OpenRouter (pihak ketiga) untuk analisis pada Mode Live.
+- **Caching & Penyimpanan:** layanan bersifat *stateless* (tidak menyimpan riwayat ke disk/database); hanya `/api/v1/analyze/phone` yang memiliki *in-memory LRU+TTL cache* di RAM (maks. 100 entri selama 24 jam, kunci di-hash SHA-256).
+- **Privasi & Optimasi Gambar:** lihat rincian kontrak alur data, pembersihan metadata gambar, minimalisasi rahasia korban (`[disamarkan]`), dan kebijakan *Zero Data Retention* (ZDR) pada §7 di bawah.
+
+## 7. Alur Data & Prinsip Privasi (UU PDP, UU ITE, GDPR, & ZDR)
+
+Seksi ini mendefinisikan batas tanggung jawab privasi dan alur data pada AI Service sebagai rujukan kontrak bagi backend utama aplikasi web (termasuk penyusunan *Terms of Service*, *Privacy Policy*, dan fitur *Hapus Data*).
+
+### 7.1 Alur Data (*Data Flow*)
+`Pengguna` $\rightarrow$ `Backend utama aplikasi web (database & object storage aplikasi web)` $\xrightarrow{\text{HTTPS + X-API-Token}}$ `AI Service (stateless, RAM)` $\rightarrow$ `Penyedia inferensi (OpenRouter / GetContact)` $\rightarrow$ `JSON output ke backend utama aplikasi web`.
+
+### 7.2 Jaminan & Batasan Privasi pada AI Service
+- **Stateless & Retensi Minimal (*Storage Limitation*):** AI Service tidak menulis teks, gambar bukti, kronologi, maupun hasil analisis ke disk atau database. Satu-satunya retensi sementara adalah *in-memory cache* reputasi nomor telepon di RAM (maks. 100 entri, TTL 24 jam, kunci nomor di-hash **SHA-256**, otomatis terhapus saat server restart).
+- **Optimasi & Pembersihan Metadata Gambar:** Sebelum diteruskan ke OpenRouter pada Mode Live, setiap gambar diverifikasi format biner aslinya (`JPEG`/`PNG`/`WEBP`), dibatasi anti-*decompression bomb* (`40 MP`), dioptimasi resolusinya (lebar maks. `1.280 px` & total piksel maks. `4 MP`, format dipertahankan), dan dibersihkan dari metadata EXIF (koordinat GPS, model perangkat) serta metadata teks non-struktural (`tEXt`/`iTXt`/XMP).
+- **Zero Data Retention (ZDR):** Pada mode produksi dengan model pendukung ZDR, aktivasi `OPENROUTER_ZDR_ONLY=true` (bersama pengaturan privasi akun OpenRouter) mengirim `provider: {"zdr": true, "data_collection": "deny", "require_parameters": true}` agar penyedia inferensi tidak menyimpan maupun melatih ulang data input mentah. Mode uji gratis (`OPENROUTER_ZDR_ONLY=false`) bersifat non-ZDR.
+- **Minimalisasi Rahasia pada Output (*Data Minimisation*):** Guardrail prompt (`PRIVACY & DATA MINIMISATION`) mengarahkan LLM untuk tidak mengulang nilai rahasia mentah milik korban (angka OTP, PIN, kata sandi, CVV kartu, atau 16 digit penuh NIK/nomor kartu) dan menggantinya dengan `"[disamarkan]"`. Mekanisme ini bersifat *probabilistik* (*best-effort* di sisi LLM); nama bank/institusi, nomor rekening pelaku, dan ID referensi transfer tetap dipertahankan untuk pelaporan resmi.
+- **Hak Penghapusan (*Right to Erasure*) & Anonimisasi:** Penghapusan data riwayat pengguna (*Hapus Data*) dilakukan sepenuhnya pada database utama dan object storage milik backend utama aplikasi web karena AI Service tidak menyimpan salinan permanen. Pemanfaatan riwayat insiden dari database utama untuk pembaruan *Knowledge Base* wajib melalui tahap anonimisasi terlebih dahulu (tanpa nama, nomor telepon, KTP, maupun rekening korban).

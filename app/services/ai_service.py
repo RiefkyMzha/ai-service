@@ -1,11 +1,15 @@
 import base64
+from contextlib import contextmanager
+from contextvars import ContextVar
+import io
 import json
 import logging
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Iterator
 
 import requests
 from fastapi import HTTPException, UploadFile
+from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, ValidationError
 from starlette.concurrency import run_in_threadpool
 
@@ -21,14 +25,194 @@ from app.core.prompts import (
     REASONING_PROMPT,
     VISION_PROMPT,
 )
-from app.schemas.payload import AnalysisResponse, EmergencyResponse
+from app.schemas.payload import (
+    ANALYSIS_LLM_JSON_SCHEMA,
+    EMERGENCY_LLM_JSON_SCHEMA,
+    AnalysisResponse,
+    EmergencyResponse,
+)
 
 logger = logging.getLogger(__name__)
 
+_ACTIVE_LLM_SCHEMA: ContextVar[dict[str, Any] | None] = ContextVar(
+    "active_llm_schema",
+    default=None,
+)
+
+
+@contextmanager
+def use_llm_response_schema(schema: dict[str, Any]) -> Iterator[None]:
+    token = _ACTIVE_LLM_SCHEMA.set(schema)
+    try:
+        yield
+    finally:
+        _ACTIVE_LLM_SCHEMA.reset(token)
+
+
+def _resolve_response_format() -> dict[str, Any]:
+    if settings.OPENROUTER_STRUCTURED_OUTPUTS:
+        active_schema = _ACTIVE_LLM_SCHEMA.get()
+        if active_schema is not None:
+            return active_schema
+    return {"type": "json_object"}
+
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
 MAX_IMAGE_BYTES = 15 * 1024 * 1024
+_MAX_IMAGE_WIDTH = 1_280
+_MAX_IMAGE_PIXELS = 4_000_000
+_MAX_RAW_IMAGE_PIXELS = 40_000_000
+_MAX_KB_MATCHES = 3
 _MAX_OFFICIAL_CONTACTS = 3
 _NON_BANK_AI_SCAN_EXCLUSIONS = {"Otoritas Jasa Keuangan (OJK)"}
+_ALLOWED_PIL_FORMATS = {
+    "JPEG": "image/jpeg",
+    "PNG": "image/png",
+    "WEBP": "image/webp",
+}
+_STRUCTURAL_INFO_KEYS = {
+    "adobe",
+    "adobe_transform",
+    "aspect",
+    "background",
+    "chromaticity",
+    "dpi",
+    "duration",
+    "gamma",
+    "icc_profile",
+    "interlace",
+    "jfif",
+    "jfif_density",
+    "jfif_unit",
+    "jfif_version",
+    "loop",
+    "progression",
+    "srgb",
+    "transparency",
+}
+
+Image.MAX_IMAGE_PIXELS = _MAX_RAW_IMAGE_PIXELS
+
+
+def _has_non_structural_metadata(img: Image.Image) -> bool:
+    if img.getexif():
+        return True
+    for key in img.info:
+        if str(key).lower() not in _STRUCTURAL_INFO_KEYS:
+            return True
+    return False
+
+
+def _optimize_image_bytes(content: bytes, content_type: str) -> tuple[bytes, str]:
+    try:
+        with Image.open(io.BytesIO(content)) as img:
+            orig_format = (img.format or "").upper()
+            canonical_mime = _ALLOWED_PIL_FORMATS.get(orig_format)
+            if not canonical_mime:
+                raise HTTPException(
+                    status_code=400,
+                    detail="File gambar tidak valid atau rusak.",
+                )
+
+            width, height = img.size
+            if width <= 0 or height <= 0 or width * height > _MAX_RAW_IMAGE_PIXELS:
+                raise HTTPException(
+                    status_code=400,
+                    detail="File gambar tidak valid atau rusak.",
+                )
+
+            is_animated = bool(
+                getattr(img, "is_animated", False)
+                and getattr(img, "n_frames", 1) > 1
+            )
+            has_metadata = _has_non_structural_metadata(img)
+            needs_resize = (
+                width > _MAX_IMAGE_WIDTH or width * height > _MAX_IMAGE_PIXELS
+            )
+
+            if not is_animated and not has_metadata and not needs_resize:
+                img.load()
+                return content, canonical_mime
+
+            if is_animated:
+                img.seek(0)
+
+            working = ImageOps.exif_transpose(img)
+            w, h = working.size
+            if w <= 0 or h <= 0 or w * h > _MAX_RAW_IMAGE_PIXELS:
+                raise HTTPException(
+                    status_code=400,
+                    detail="File gambar tidak valid atau rusak.",
+                )
+
+            scale = 1.0
+            if w > _MAX_IMAGE_WIDTH:
+                scale = min(scale, _MAX_IMAGE_WIDTH / w)
+            total_pixels = w * h
+            if total_pixels > _MAX_IMAGE_PIXELS:
+                scale = min(scale, (_MAX_IMAGE_PIXELS / total_pixels) ** 0.5)
+
+            if scale < 1.0:
+                new_w = max(1, int(w * scale))
+                new_h = max(1, int(h * scale))
+                working = working.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+            buf = io.BytesIO()
+            if orig_format == "JPEG":
+                if working.mode not in ("RGB", "L"):
+                    working = working.convert("RGB")
+                working.save(buf, format="JPEG", quality=85, optimize=True)
+            elif orig_format == "PNG":
+                working.save(buf, format="PNG", optimize=True)
+            else:
+                working.save(buf, format="WEBP", quality=85)
+
+            return buf.getvalue(), canonical_mime
+    except HTTPException:
+        raise
+    except (UnidentifiedImageError, Image.DecompressionBombError, OSError, ValueError) as err:
+        raise HTTPException(
+            status_code=400,
+            detail="File gambar tidak valid atau rusak.",
+        ) from err
+
+
+def _parse_int_metric(value: Any) -> int | None:
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+        return value
+    return None
+
+
+def _format_token_usage(raw_usage: Any) -> str:
+    if not isinstance(raw_usage, dict):
+        return "tidak tersedia"
+
+    prompt_tokens = _parse_int_metric(raw_usage.get("prompt_tokens"))
+    completion_tokens = _parse_int_metric(raw_usage.get("completion_tokens"))
+    total_tokens = _parse_int_metric(raw_usage.get("total_tokens"))
+
+    details = raw_usage.get("completion_tokens_details")
+    reasoning_tokens = (
+        _parse_int_metric(details.get("reasoning_tokens"))
+        if isinstance(details, dict)
+        else None
+    )
+
+    parts: list[str] = []
+    if prompt_tokens is not None:
+        parts.append(f"prompt={prompt_tokens}")
+    if completion_tokens is not None:
+        if reasoning_tokens is not None:
+            parts.append(
+                f"completion={completion_tokens} (reasoning={reasoning_tokens})"
+            )
+        else:
+            parts.append(f"completion={completion_tokens}")
+    elif reasoning_tokens is not None:
+        parts.append(f"reasoning={reasoning_tokens}")
+    if total_tokens is not None:
+        parts.append(f"total={total_tokens}")
+
+    return ", ".join(parts) if parts else "tidak tersedia"
 
 
 def parse_ai_json(raw_result: Any, context: str) -> dict[str, Any]:
@@ -124,11 +308,16 @@ class AIService:
             chunks.append(chunk)
 
         content = b"".join(chunks)
+        optimized_content, optimized_type = await run_in_threadpool(
+            _optimize_image_bytes,
+            content,
+            content_type,
+        )
 
-        encoded = base64.b64encode(content).decode("ascii")
-        return f"data:{content_type};base64,{encoded}"
+        encoded = base64.b64encode(optimized_content).decode("ascii")
+        return f"data:{optimized_type};base64,{encoded}"
 
-    def _post_openrouter(self, messages: list[dict[str, Any]]) -> str:
+    def _post_openrouter(self, messages: list[dict[str, Any]]) -> tuple[str, Any]:
         headers = {
             "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
             "Content-Type": "application/json",
@@ -137,12 +326,30 @@ class AIService:
         }
 
         model_name = settings.OPENROUTER_MODEL or self.model
-        payload = {
+        payload: dict[str, Any] = {
             "model": model_name,
             "messages": messages,
             "temperature": 0.1,
-            "response_format": {"type": "json_object"},
+            "response_format": _resolve_response_format(),
         }
+        if settings.OPENROUTER_ZDR_ONLY:
+            payload["provider"] = {
+                "zdr": True,
+                "data_collection": "deny",
+                "require_parameters": True,
+            }
+
+        reasoning_effort = (settings.OPENROUTER_REASONING_EFFORT or "").strip().lower()
+        if reasoning_effort:
+            payload["reasoning"] = {"effort": reasoning_effort, "exclude": True}
+        elif settings.OPENROUTER_REASONING_MAX_TOKENS is not None:
+            payload["reasoning"] = {
+                "max_tokens": settings.OPENROUTER_REASONING_MAX_TOKENS,
+                "exclude": True,
+            }
+
+        if settings.OPENROUTER_MAX_TOKENS is not None:
+            payload["max_tokens"] = settings.OPENROUTER_MAX_TOKENS
 
         url = settings.OPENROUTER_BASE_URL or self.api_url
         resp = requests.post(
@@ -153,10 +360,23 @@ class AIService:
         )
         resp.raise_for_status()
         data = resp.json()
-        content = data["choices"][0]["message"]["content"]
+        usage = data.get("usage")
+        choice = data["choices"][0]
+        finish_reason = (
+            choice.get("finish_reason") if isinstance(choice, dict) else None
+        )
+        native_finish_reason = (
+            choice.get("native_finish_reason") if isinstance(choice, dict) else None
+        )
+        if finish_reason == "length" or native_finish_reason == "length":
+            logger.warning(
+                "Output AI terpotong karena batas max_tokens (finish_reason=length; token: %s).",
+                _format_token_usage(usage),
+            )
+        content = choice["message"]["content"]
         if not isinstance(content, str):
             raise ValueError("Konten respons AI bukan string.")
-        return content
+        return content, usage
 
     async def _call_openrouter(self, messages: list[dict[str, Any]]) -> str:
         if not settings.OPENROUTER_API_KEY:
@@ -167,12 +387,13 @@ class AIService:
 
         start_time = time.perf_counter()
         try:
-            content = await run_in_threadpool(self._post_openrouter, messages)
+            content, raw_usage = await run_in_threadpool(self._post_openrouter, messages)
             elapsed = time.perf_counter() - start_time
             logger.info(
-                "Inferensi OpenRouter (%s) selesai dalam %.2f detik.",
+                "Inferensi OpenRouter (%s) selesai dalam %.2f detik | token: %s.",
                 settings.OPENROUTER_MODEL or self.model,
                 elapsed,
+                _format_token_usage(raw_usage),
             )
             return content
 
@@ -184,6 +405,13 @@ class AIService:
 
         except requests.HTTPError as err:
             status = err.response.status_code if err.response is not None else None
+            logger.warning(
+                "OpenRouter mengembalikan HTTP %s (model=%s, zdr=%s, structured=%s).",
+                status if status is not None else "unknown",
+                settings.OPENROUTER_MODEL or self.model,
+                settings.OPENROUTER_ZDR_ONLY,
+                settings.OPENROUTER_STRUCTURED_OUTPUTS,
+            )
             if status in (401, 403):
                 detail = "API key AI tidak valid atau tidak punya akses."
             elif status == 429:
@@ -222,7 +450,9 @@ class AIService:
         if use_knowledge_base and user_text and hasattr(self.data_loader, "match_knowledge_base"):
             matched = self.data_loader.match_knowledge_base(user_text, min_keywords=3)
             if isinstance(matched, list):
-                kb_matches = [m for m in matched if isinstance(m, dict) and m.get("kategori_pola")]
+                kb_matches = [
+                    m for m in matched if isinstance(m, dict) and m.get("kategori_pola")
+                ][:_MAX_KB_MATCHES]
             if kb_matches:
                 kb_lines = "\n".join(
                     f"- Pola: {m['kategori_pola']} (kata kunci cocok: {', '.join(m['matched_keywords'])}) | SOP Mitigasi: {m['sop_mitigasi']}"
@@ -277,7 +507,8 @@ class AIService:
             {"role": "system", "content": system_instruction},
             {"role": "user", "content": user_content},
         ]
-        raw_result = await self._call_openrouter(messages)
+        with use_llm_response_schema(ANALYSIS_LLM_JSON_SCHEMA):
+            raw_result = await self._call_openrouter(messages)
         result = parse_ai_json(raw_result, "analisis")
         result = normalize_analysis_result(result)
         contacts = self._resolve_analysis_contacts(user_text, image_url, result)
@@ -453,7 +684,8 @@ class AIService:
             mock_emergency["official_contact"] = contacts[0] if contacts else None
             return mock_emergency
 
-        raw_result = await self._call_openrouter(messages)
+        with use_llm_response_schema(EMERGENCY_LLM_JSON_SCHEMA):
+            raw_result = await self._call_openrouter(messages)
         result = parse_ai_json(raw_result, "darurat")
         result = normalize_analysis_result(result)
         contacts = self._resolve_emergency_contacts(

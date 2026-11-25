@@ -309,6 +309,22 @@ Jika pemanggilan API menghasilkan kode status HTTP bukan `200`, tangani dan samp
 
 ---
 
-## 8. Rujukan Kontrak Lengkap
+## 8. Alur Data & Prinsip Privasi AI (UU PDP, UU ITE, GDPR, & ZDR)
+
+Bagian ini merangkum panduan praktis dari kontrak privasi resmi di **[`api-contract.md` §7](api-contract.md#7-alur-data--prinsip-privasi-uu-pdp-uu-ite-gdpr--zdr)** bagi pengembang aplikasi web saat menyusun halaman *Terms of Service*, *Privacy Policy*, dan mekanisme pengaturan privasi pengguna.
+
+### 1. Alur Data (*Data Flow*)
+`Pengguna` $\rightarrow$ `Backend utama aplikasi web (database & object storage aplikasi web)` $\xrightarrow{\text{HTTPS + X-API-Token}}$ `AI Service (stateless, diproses di RAM)` $\rightarrow$ `Penyedia inferensi (OpenRouter / GetContact)` $\rightarrow$ `JSON output ke backend utama aplikasi web`.
+
+### 2. Prinsip Perlindungan Data yang Diterapkan di AI Service
+- **Pemrosesan *Stateless* (*Storage Limitation*):** AI Service tidak menyimpan teks, gambar, kronologi, maupun riwayat hasil analisis ke disk ataupun database. Satu-satunya retensi sementara adalah *in-memory LRU+TTL cache* reputasi nomor telepon di RAM (maks. 100 entri, TTL 24 jam, kunci di-hash **SHA-256**, otomatis hilang saat server restart).
+- **Pembersihan Metadata Gambar:** Setiap file gambar bukti diverifikasi format biner aslinya, dioptimasi resolusinya, dan dibersihkan dari metadata EXIF (koordinat GPS, model perangkat) serta metadata teks non-struktural sebelum diteruskan ke penyedia inferensi.
+- **Zero Data Retention (ZDR):** Pada lingkungan produksi dengan model pendukung ZDR, pengaturan `OPENROUTER_ZDR_ONLY=true` (beserta pengaturan privasi akun OpenRouter) meneruskan `provider: {zdr: true, data_collection: "deny", require_parameters: true}` agar data input mentah tidak disimpan maupun digunakan untuk pelatihan ulang di penyedia inferensi. Mode uji gratis (`OPENROUTER_ZDR_ONLY=false`) dicatat secara transparan sebagai non-ZDR.
+- **Minimalisasi Data pada Output (*Data Minimisation*):** Guardrail prompt (`PRIVACY & DATA MINIMISATION`) mengarahkan LLM agar tidak mengulang nilai rahasia mentah milik korban (angka OTP, PIN, kata sandi, CVV kartu, atau 16 digit penuh NIK/nomor kartu) ke output JSON dan menggantinya dengan `"[disamarkan]"`. Mekanisme ini bersifat *probabilistik* (*best-effort* di sisi LLM) untuk meminimalkan penyimpanan rahasia korban pada riwayat di database utama aplikasi web, sementara nama bank/institusi, nomor rekening pelaku, dan ID referensi transfer tetap dipertahankan untuk keperluan pelaporan resmi.
+- **Hak Penghapusan (*Right to Erasure*) & Pembatasan Pemrosesan:** Tombol *Hapus Data* pada pengaturan aplikasi web menghapus seluruh riwayat di database utama dan object storage milik backend utama aplikasi web; tidak ada salinan permanen yang tersisa di AI Service. Apabila riwayat kasus baru dimanfaatkan untuk memperbarui *Knowledge Base* penipuan, data wajib dianonimkan terlebih dahulu (tanpa nama, nomor telepon, KTP, maupun rekening korban).
+
+---
+
+## 9. Rujukan Kontrak Lengkap
 
 Spesifikasi teknis mendalam mengenai skema Pydantic, kontrak JSON per endpoint, serta format formulir darurat tersedia pada dokumen **[`api-contract.md`](api-contract.md)**.

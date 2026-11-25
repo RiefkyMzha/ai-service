@@ -47,3 +47,65 @@ class EmergencyResponse(BaseModel):
     langkah_penanganan: List[ActionStep]
     official_contact: Optional[OfficialContact] = None
     official_contacts: List[OfficialContact] = Field(default_factory=list)
+
+
+# --- LLM Wire Schemas ---
+ANALYSIS_LLM_JSON_SCHEMA: dict[str, object] = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "analysis_response",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "risk_score": {"type": "integer"},
+                "risk_category": {"type": "string"},
+                "scam_type": {"type": "string"},
+                "reasons": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+                "recommendations": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+            },
+            "required": [
+                "risk_score",
+                "risk_category",
+                "scam_type",
+                "reasons",
+                "recommendations",
+            ],
+            "additionalProperties": False,
+        },
+    },
+}
+
+EMERGENCY_LLM_JSON_SCHEMA: dict[str, object] = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "emergency_response",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "ai_kronologi": {"type": "string"},
+                "langkah_penanganan": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string"},
+                            "description": {"type": "string"},
+                        },
+                        "required": ["title", "description"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            "required": ["ai_kronologi", "langkah_penanganan"],
+            "additionalProperties": False,
+        },
+    },
+}

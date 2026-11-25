@@ -1,14 +1,29 @@
 import asyncio
+import base64
+import io
 import logging
 
 import pytest
 import requests
 from fastapi import HTTPException
+from PIL import Image, PngImagePlugin
+from pydantic import ValidationError
 
-from app.core.config import settings
+from app.core.config import Settings, settings
 from app.core.data_loader import DataLoader
 from app.core.normalization import normalize_emergency_incident_data
-from app.services.ai_service import AIService
+from app.schemas.payload import (
+    ANALYSIS_LLM_JSON_SCHEMA,
+    EMERGENCY_LLM_JSON_SCHEMA,
+    ActionStep,
+    AnalysisResponse,
+    EmergencyResponse,
+)
+from app.services.ai_service import (
+    AIService,
+    _format_token_usage,
+    _optimize_image_bytes,
+)
 from tests.conftest import make_png, make_upload
 
 
@@ -465,6 +480,565 @@ def test_process_emergency_passes_normalized_labels_to_prompt_and_contact_resolv
     assert "- tindakan_pelaku: Mengirim tautan mencurigakan, Meminta OTP/PIN/kata sandi" in breach_user_text
     assert "- status_akses: Tidak bisa diakses" in breach_user_text
     assert res_breach["official_contact"]["name"] == "Otoritas Jasa Keuangan (OJK)"
+
+
+def test_format_token_usage_handles_standard_reasoning_and_malformed():
+    assert (
+        _format_token_usage(
+            {"prompt_tokens": 510, "completion_tokens": 190, "total_tokens": 700}
+        )
+        == "prompt=510, completion=190, total=700"
+    )
+    assert (
+        _format_token_usage(
+            {
+                "prompt_tokens": 600,
+                "completion_tokens": 320,
+                "total_tokens": 920,
+                "completion_tokens_details": {"reasoning_tokens": 110},
+            }
+        )
+        == "prompt=600, completion=320 (reasoning=110), total=920"
+    )
+    assert _format_token_usage(None) == "tidak tersedia"
+    assert (
+        _format_token_usage(
+            {
+                "prompt_tokens": "RAHASIA",
+                "completion_tokens": True,
+                "total_tokens": -5,
+            }
+        )
+        == "tidak tersedia"
+    )
+
+
+def test_openrouter_logs_token_usage_safely(monkeypatch, caplog, service: AIService):
+    monkeypatch.setattr(settings, "OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "OPENROUTER_MODEL", "custom/vision-model:free")
+
+    class DummyUsageResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "choices": [{"message": {"content": '{"ok": true}'}}],
+                "usage": {
+                    "prompt_tokens": 612,
+                    "completion_tokens": 245,
+                    "total_tokens": 857,
+                    "completion_tokens_details": {"reasoning_tokens": 80},
+                },
+            }
+
+    monkeypatch.setattr(
+        "app.services.ai_service.requests.post",
+        lambda *args, **kwargs: DummyUsageResponse(),
+    )
+    caplog.set_level(logging.INFO)
+
+    result = run(service._call_openrouter([{"role": "user", "content": "tes"}]))
+
+    assert result == '{"ok": true}'
+    assert (
+        "token: prompt=612, completion=245 (reasoning=80), total=857."
+        in caplog.text
+    )
+
+
+def test_prompts_include_privacy_and_data_minimisation_guardrail(
+    monkeypatch, service: AIService
+):
+    captured_systems: list[str] = []
+
+    async def fake_call(self, messages):
+        captured_systems.append(messages[0]["content"])
+        if "ai_kronologi" in messages[0]["content"]:
+            return '{"ai_kronologi": "Kronologi", "langkah_penanganan": []}'
+        return (
+            '{"risk_score": 20, "risk_category": "Rendah",'
+            ' "scam_type": "No Scam Indicators",'
+            ' "reasons": ["Aman"], "recommendations": ["Waspada"]}'
+        )
+
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_call)
+
+    run(service.analyze_text_and_image("Tes teks OTP", None))
+    run(service.analyze_text_and_image("Tes gambar OTP", make_upload(make_png())))
+    run(
+        service.process_emergency(
+            {"bank_korban": "BCA", "kronologi_user": "Transfer"},
+            None,
+            is_financial=True,
+        )
+    )
+    run(
+        service.process_emergency(
+            {"jenis_data": "perbankan", "kronologi_user": "OTP bocor"},
+            None,
+            is_financial=False,
+        )
+    )
+
+    assert len(captured_systems) == 4
+    for system_prompt in captured_systems:
+        assert "PRIVACY & DATA MINIMISATION" in system_prompt
+        assert "[disamarkan]" in system_prompt
+    assert "Do NOT write phone numbers, call center numbers, or URLs in `recommendations`" in captured_systems[0]
+    assert "Do NOT write phone numbers, call center numbers, or URLs in `recommendations`" in captured_systems[1]
+    assert 'Mask victim secrets as "[disamarkan]".' in captured_systems[1]
+    assert "victim's own bank/e-wallet account number" in captured_systems[2]
+    assert "perpetrator account numbers, and transfer reference IDs MUST still be written as-is" in captured_systems[2]
+    assert "Bank/institution names MUST still be written as-is" in captured_systems[3]
+
+
+def test_openrouter_optional_zdr_reasoning_and_max_tokens_payload(
+    monkeypatch, service: AIService
+):
+    monkeypatch.setattr(settings, "OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "OPENROUTER_MODEL", "nvidia/nemotron-3.5-super-vl")
+    captured_payloads: list[dict] = []
+
+    class DummyResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"choices": [{"message": {"content": '{"ok": true}'}}]}
+
+    def fake_post(url, headers, json, timeout):
+        captured_payloads.append(json)
+        return DummyResponse()
+
+    monkeypatch.setattr("app.services.ai_service.requests.post", fake_post)
+
+    monkeypatch.setattr(settings, "OPENROUTER_ZDR_ONLY", False)
+    monkeypatch.setattr(settings, "OPENROUTER_REASONING_EFFORT", "")
+    monkeypatch.setattr(settings, "OPENROUTER_REASONING_MAX_TOKENS", None)
+    monkeypatch.setattr(settings, "OPENROUTER_MAX_TOKENS", None)
+    run(service._call_openrouter([{"role": "user", "content": "tes"}]))
+    assert "provider" not in captured_payloads[0]
+    assert "reasoning" not in captured_payloads[0]
+    assert "max_tokens" not in captured_payloads[0]
+
+    monkeypatch.setattr(settings, "OPENROUTER_ZDR_ONLY", True)
+    monkeypatch.setattr(settings, "OPENROUTER_REASONING_EFFORT", "low")
+    monkeypatch.setattr(settings, "OPENROUTER_REASONING_MAX_TOKENS", None)
+    monkeypatch.setattr(settings, "OPENROUTER_MAX_TOKENS", 2560)
+    run(service._call_openrouter([{"role": "user", "content": "tes"}]))
+    assert captured_payloads[1]["provider"] == {
+        "zdr": True,
+        "data_collection": "deny",
+        "require_parameters": True,
+    }
+    assert captured_payloads[1]["reasoning"] == {"effort": "low", "exclude": True}
+    assert captured_payloads[1]["max_tokens"] == 2560
+
+    monkeypatch.setattr(settings, "OPENROUTER_REASONING_EFFORT", "")
+    monkeypatch.setattr(settings, "OPENROUTER_REASONING_MAX_TOKENS", 1024)
+    monkeypatch.setattr(settings, "OPENROUTER_MAX_TOKENS", 2560)
+    run(service._call_openrouter([{"role": "user", "content": "tes"}]))
+    assert captured_payloads[2]["reasoning"] == {"max_tokens": 1024, "exclude": True}
+    assert captured_payloads[2]["max_tokens"] == 2560
+
+
+def test_openrouter_logs_warning_on_finish_reason_length_even_when_content_none(
+    monkeypatch, caplog, service: AIService
+):
+    monkeypatch.setattr(settings, "OPENROUTER_API_KEY", "test-key")
+
+    class DummyLengthNoneResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "choices": [
+                    {
+                        "finish_reason": "length",
+                        "message": {"content": None},
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 500,
+                    "completion_tokens": 2048,
+                    "total_tokens": 2548,
+                    "completion_tokens_details": {"reasoning_tokens": 2048},
+                },
+            }
+
+    monkeypatch.setattr(
+        "app.services.ai_service.requests.post",
+        lambda *args, **kwargs: DummyLengthNoneResponse(),
+    )
+    caplog.set_level(logging.WARNING)
+
+    with pytest.raises(HTTPException) as exc:
+        run(service._call_openrouter([{"role": "user", "content": "tes"}]))
+
+    assert exc.value.status_code == 500
+    assert "Output AI terpotong karena batas max_tokens (finish_reason=length;" in caplog.text
+    assert "completion=2048 (reasoning=2048)" in caplog.text
+
+
+def test_settings_validates_optional_openrouter_parameters():
+    default_cfg = Settings(
+        _env_file=None,
+        OPENROUTER_REASONING_EFFORT="",
+        OPENROUTER_REASONING_MAX_TOKENS="",
+        OPENROUTER_MAX_TOKENS="",
+    )
+    assert default_cfg.OPENROUTER_REASONING_EFFORT == ""
+    assert default_cfg.OPENROUTER_REASONING_MAX_TOKENS is None
+    assert default_cfg.OPENROUTER_MAX_TOKENS is None
+
+    effort_cfg = Settings(
+        _env_file=None,
+        OPENROUTER_REASONING_EFFORT=" LOW ",
+        OPENROUTER_MAX_TOKENS="2560",
+    )
+    assert effort_cfg.OPENROUTER_REASONING_EFFORT == "low"
+    assert effort_cfg.OPENROUTER_MAX_TOKENS == 2560
+
+    budget_cfg = Settings(
+        _env_file=None,
+        OPENROUTER_REASONING_MAX_TOKENS="1024",
+        OPENROUTER_MAX_TOKENS="2224",
+    )
+    assert budget_cfg.OPENROUTER_REASONING_MAX_TOKENS == 1024
+    assert budget_cfg.OPENROUTER_MAX_TOKENS == 2224
+
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, OPENROUTER_REASONING_EFFORT="turbo")
+
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            OPENROUTER_REASONING_EFFORT="low",
+            OPENROUTER_REASONING_MAX_TOKENS=1024,
+        )
+
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            OPENROUTER_REASONING_MAX_TOKENS=1024,
+            OPENROUTER_MAX_TOKENS=2000,
+        )
+
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, OPENROUTER_MAX_TOKENS=1000)
+
+
+def test_image_optimization_resizes_strips_metadata_and_validates_format(
+    monkeypatch, service: AIService
+):
+    raw_small_png = make_png()
+    fast_bytes, fast_mime = _optimize_image_bytes(raw_small_png, "image/png")
+    assert fast_bytes == raw_small_png
+    assert fast_mime == "image/png"
+
+    cam_img = Image.new("RGB", (4000, 3000), color=(120, 140, 160))
+    exif = cam_img.getexif()
+    exif[271] = "SecretPhoneBrand"
+    cam_buf = io.BytesIO()
+    cam_img.save(cam_buf, format="JPEG", exif=exif.tobytes())
+    opt_cam, opt_cam_mime = _optimize_image_bytes(cam_buf.getvalue(), "image/jpeg")
+    assert opt_cam_mime == "image/jpeg"
+    with Image.open(io.BytesIO(opt_cam)) as checked_cam:
+        assert checked_cam.width <= 1280
+        assert checked_cam.width * checked_cam.height <= 4_000_000
+        assert not checked_cam.getexif()
+
+    scroll_img = Image.new("RGB", (1080, 5000), color=(255, 255, 255))
+    scroll_buf = io.BytesIO()
+    scroll_img.save(scroll_buf, format="PNG")
+    opt_scroll, opt_scroll_mime = _optimize_image_bytes(
+        scroll_buf.getvalue(), "image/png"
+    )
+    assert opt_scroll_mime == "image/png"
+    with Image.open(io.BytesIO(opt_scroll)) as checked_scroll:
+        assert checked_scroll.width > 900
+        assert checked_scroll.width * checked_scroll.height <= 4_000_000
+        assert checked_scroll.format == "PNG"
+
+    meta_img = Image.new("RGB", (100, 100), color=(10, 20, 30))
+    pnginfo = PngImagePlugin.PngInfo()
+    pnginfo.add_text("Comment", "PII-SECRET-TEXT")
+    pnginfo.add_text("XML:com.adobe.xmp", "<xmp>secret</xmp>")
+    meta_buf = io.BytesIO()
+    meta_img.save(meta_buf, format="PNG", pnginfo=pnginfo)
+    opt_meta, opt_meta_mime = _optimize_image_bytes(meta_buf.getvalue(), "image/png")
+    assert opt_meta_mime == "image/png"
+    with Image.open(io.BytesIO(opt_meta)) as checked_meta:
+        assert "Comment" not in checked_meta.info
+        assert "XML:com.adobe.xmp" not in checked_meta.info
+
+    cmyk_img = Image.new("CMYK", (1500, 1000), color=(0, 50, 100, 0))
+    cmyk_buf = io.BytesIO()
+    cmyk_img.save(cmyk_buf, format="JPEG")
+    opt_cmyk, opt_cmyk_mime = _optimize_image_bytes(cmyk_buf.getvalue(), "image/jpeg")
+    assert opt_cmyk_mime == "image/jpeg"
+    with Image.open(io.BytesIO(opt_cmyk)) as checked_cmyk:
+        assert checked_cmyk.mode == "RGB"
+        assert checked_cmyk.width <= 1280
+
+    frame1 = Image.new("RGB", (64, 64), color=(255, 0, 0))
+    frame2 = Image.new("RGB", (64, 64), color=(0, 255, 0))
+    webp_buf = io.BytesIO()
+    frame1.save(webp_buf, format="WEBP", save_all=True, append_images=[frame2])
+    opt_webp, opt_webp_mime = _optimize_image_bytes(webp_buf.getvalue(), "image/webp")
+    assert opt_webp_mime == "image/webp"
+    with Image.open(io.BytesIO(opt_webp)) as checked_webp:
+        assert getattr(checked_webp, "n_frames", 1) == 1
+
+    with pytest.raises(HTTPException) as bad_exc:
+        run(service._process_image_to_base64(make_upload(b"not-an-image", "image/png")))
+    assert bad_exc.value.status_code == 400
+
+    gif_buf = io.BytesIO()
+    Image.new("RGB", (16, 16), color=(0, 0, 0)).save(gif_buf, format="GIF")
+    with pytest.raises(HTTPException) as gif_exc:
+        run(service._process_image_to_base64(make_upload(gif_buf.getvalue(), "image/png")))
+    assert gif_exc.value.status_code == 400
+
+    monkeypatch.setattr("app.services.ai_service._MAX_RAW_IMAGE_PIXELS", 100)
+    big_buf = io.BytesIO()
+    Image.new("RGB", (20, 20), color=(0, 0, 0)).save(big_buf, format="PNG")
+    with pytest.raises(HTTPException) as bomb_exc:
+        _optimize_image_bytes(big_buf.getvalue(), "image/png")
+    assert bomb_exc.value.status_code == 400
+
+    encoded_uri = run(service._process_image_to_base64(make_upload(raw_small_png)))
+    decoded_uri = base64.b64decode(encoded_uri.split(",", 1)[1])
+    assert decoded_uri == raw_small_png
+
+
+def test_kb_injection_capped_to_top_3_categories(monkeypatch, service: AIService):
+    captured_messages = []
+
+    def fake_kb(text, min_keywords=3):
+        return [
+            {
+                "kategori_pola": f"Kategori {idx}",
+                "matched_keywords": ["a", "b", "c"],
+                "sop_mitigasi": f"SOP {idx}",
+            }
+            for idx in range(1, 6)
+        ]
+
+    async def fake_call(self, messages):
+        nonlocal captured_messages
+        captured_messages = messages
+        return (
+            '{"risk_score": 80, "risk_category": "Tinggi",'
+            ' "scam_type": "Phishing", "reasons": ["x"], "recommendations": ["y"]}'
+        )
+
+    monkeypatch.setattr(service.data_loader, "match_knowledge_base", fake_kb)
+    monkeypatch.setattr(AIService, "_call_openrouter", fake_call)
+
+    run(service.analyze_text_and_image("Pesan dengan banyak kata kunci scam", None))
+    system_prompt = captured_messages[0]["content"]
+    assert "Kategori 1" in system_prompt
+    assert "Kategori 2" in system_prompt
+    assert "Kategori 3" in system_prompt
+    assert "Kategori 4" not in system_prompt
+    assert "Kategori 5" not in system_prompt
+
+
+def test_normalize_multi_value_deduplicates_and_caps_length():
+    repeated = normalize_emergency_incident_data(
+        {"tujuan_transaksi": ",".join(["link"] * 200)}
+    )
+    assert repeated["tujuan_transaksi"] == "Pembelian barang/jasa"
+    assert len(repeated["tujuan_transaksi"]) <= 1_000
+
+    single_overlong = normalize_emergency_incident_data(
+        {"tujuan_transaksi": "x" * 1_500}
+    )
+    assert len(single_overlong["tujuan_transaksi"]) == 1_000
+
+    many_distinct = normalize_emergency_incident_data(
+        {"tindakan_pelaku": ",".join(f"item-{i:03d}-" + ("a" * 80) for i in range(30))}
+    )
+    assert 0 < len(many_distinct["tindakan_pelaku"]) <= 1_000
+    assert not many_distinct["tindakan_pelaku"].endswith(",")
+
+
+def test_llm_wire_schemas_stay_in_sync_with_pydantic_models():
+    excluded = {"official_contact", "official_contacts"}
+    disallowed_keywords = {"minimum", "maximum", "minItems"}
+
+    def collect_keys(node: object) -> set[str]:
+        found: set[str] = set()
+        if isinstance(node, dict):
+            for key, value in node.items():
+                found.add(key)
+                found.update(collect_keys(value))
+        elif isinstance(node, list):
+            for item in node:
+                found.update(collect_keys(item))
+        return found
+
+    analysis_spec = ANALYSIS_LLM_JSON_SCHEMA["json_schema"]
+    analysis_schema = analysis_spec["schema"]
+    expected_analysis_fields = set(AnalysisResponse.model_fields) - excluded
+    assert ANALYSIS_LLM_JSON_SCHEMA["type"] == "json_schema"
+    assert analysis_spec["name"] == "analysis_response"
+    assert analysis_spec["strict"] is True
+    assert analysis_schema["additionalProperties"] is False
+    assert set(analysis_schema["properties"]) == expected_analysis_fields
+    assert set(analysis_schema["required"]) == expected_analysis_fields
+    assert not (collect_keys(ANALYSIS_LLM_JSON_SCHEMA) & disallowed_keywords)
+
+    emergency_spec = EMERGENCY_LLM_JSON_SCHEMA["json_schema"]
+    emergency_schema = emergency_spec["schema"]
+    expected_emergency_fields = set(EmergencyResponse.model_fields) - excluded
+    assert EMERGENCY_LLM_JSON_SCHEMA["type"] == "json_schema"
+    assert emergency_spec["name"] == "emergency_response"
+    assert emergency_spec["strict"] is True
+    assert emergency_schema["additionalProperties"] is False
+    assert set(emergency_schema["properties"]) == expected_emergency_fields
+    assert set(emergency_schema["required"]) == expected_emergency_fields
+
+    step_schema = emergency_schema["properties"]["langkah_penanganan"]["items"]
+    expected_step_fields = set(ActionStep.model_fields)
+    assert step_schema["additionalProperties"] is False
+    assert set(step_schema["properties"]) == expected_step_fields
+    assert set(step_schema["required"]) == expected_step_fields
+    assert not (collect_keys(EMERGENCY_LLM_JSON_SCHEMA) & disallowed_keywords)
+
+
+def test_structured_outputs_explicit_scope_and_fallback(
+    monkeypatch, service: AIService
+):
+    monkeypatch.setattr(settings, "OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "MOCK_MODE", False)
+    captured_formats: list[dict] = []
+
+    class DummyResponse:
+        def __init__(self, body: str) -> None:
+            self._body = body
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"choices": [{"message": {"content": self._body}}]}
+
+    def fake_post(url, headers, json, timeout):
+        captured_formats.append(json["response_format"])
+        rf = json["response_format"]
+        if (
+            rf.get("type") == "json_schema"
+            and rf["json_schema"]["name"] == "emergency_response"
+        ) or (
+            json["messages"]
+            and json["messages"][0].get("role") == "system"
+            and "ai_kronologi" in str(json["messages"][0].get("content", ""))
+        ):
+            return DummyResponse(
+                '{"ai_kronologi": "Kronologi", "langkah_penanganan": [{"title": "A", "description": "B"}]}'
+            )
+        return DummyResponse(
+            '{"risk_score": 25, "risk_category": "Rendah",'
+            ' "scam_type": "No Scam Indicators",'
+            ' "reasons": ["Aman"], "recommendations": ["Tetap waspada"]}'
+        )
+
+    monkeypatch.setattr("app.services.ai_service.requests.post", fake_post)
+
+    monkeypatch.setattr(settings, "OPENROUTER_STRUCTURED_OUTPUTS", False)
+    run(service.analyze_text_and_image("Tes teks normal", None))
+    run(
+        service.process_emergency(
+            {"bank_korban": "BCA", "kronologi_user": "Transfer"},
+            None,
+            is_financial=True,
+        )
+    )
+    assert captured_formats[0] == {"type": "json_object"}
+    assert captured_formats[1] == {"type": "json_object"}
+
+    monkeypatch.setattr(settings, "OPENROUTER_STRUCTURED_OUTPUTS", True)
+    run(service.analyze_text_and_image("Tes teks normal", None))
+    run(
+        service.process_emergency(
+            {"bank_korban": "BCA", "kronologi_user": "Transfer"},
+            None,
+            is_financial=True,
+        )
+    )
+    run(
+        service.process_emergency(
+            {"jenis_data": "perbankan", "kronologi_user": "OTP bocor"},
+            None,
+            is_financial=False,
+        )
+    )
+    run(service._call_openrouter([{"role": "user", "content": "tes"}]))
+
+    assert captured_formats[2] == ANALYSIS_LLM_JSON_SCHEMA
+    assert captured_formats[3] == EMERGENCY_LLM_JSON_SCHEMA
+    assert captured_formats[4] == EMERGENCY_LLM_JSON_SCHEMA
+    assert captured_formats[5] == {"type": "json_object"}
+
+
+def test_settings_optional_booleans_and_sanitized_http_error_log(
+    monkeypatch, caplog, service: AIService
+):
+    blank_cfg = Settings(
+        _env_file=None,
+        MOCK_MODE="",
+        OPENROUTER_ZDR_ONLY="",
+        OPENROUTER_STRUCTURED_OUTPUTS="",
+    )
+    assert blank_cfg.MOCK_MODE is False
+    assert blank_cfg.OPENROUTER_ZDR_ONLY is False
+    assert blank_cfg.OPENROUTER_STRUCTURED_OUTPUTS is False
+
+    enabled_cfg = Settings(
+        _env_file=None,
+        MOCK_MODE="true",
+        OPENROUTER_ZDR_ONLY="true",
+        OPENROUTER_STRUCTURED_OUTPUTS="true",
+    )
+    assert enabled_cfg.MOCK_MODE is True
+    assert enabled_cfg.OPENROUTER_ZDR_ONLY is True
+    assert enabled_cfg.OPENROUTER_STRUCTURED_OUTPUTS is True
+
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, OPENROUTER_STRUCTURED_OUTPUTS="maybe")
+
+    monkeypatch.setattr(settings, "OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "OPENROUTER_MODEL", "nvidia/nemotron-3.5-super-vl")
+    monkeypatch.setattr(settings, "OPENROUTER_ZDR_ONLY", True)
+    monkeypatch.setattr(settings, "OPENROUTER_STRUCTURED_OUTPUTS", True)
+
+    secret_body = "RAHASIA-UPSTREAM-BODY-12345"
+
+    def raise_404(*args, **kwargs):
+        response = requests.Response()
+        response.status_code = 404
+        response._content = secret_body.encode("utf-8")
+        raise requests.HTTPError(f"404 error {secret_body}", response=response)
+
+    monkeypatch.setattr("app.services.ai_service.requests.post", raise_404)
+    caplog.set_level(logging.WARNING)
+
+    with pytest.raises(HTTPException) as exc:
+        run(service._call_openrouter([{"role": "user", "content": "tes"}]))
+
+    assert exc.value.status_code == 502
+    assert (
+        "OpenRouter mengembalikan HTTP 404 (model=nvidia/nemotron-3.5-super-vl, zdr=True, structured=True)."
+        in caplog.text
+    )
+    assert secret_body not in caplog.text
+
+
+
 
 
 
