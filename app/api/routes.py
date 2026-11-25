@@ -25,7 +25,7 @@ def get_phone_service(ai_service: AIService = Depends(get_ai_service)) -> PhoneS
 
 # --- ROUTES ---
 
-@router.post("/analyze/text", response_model=AnalysisResponse)
+@router.post("/analyze/text", response_model=AnalysisResponse, tags=["Analysis"])
 async def analyze_text(
     text_content: str = Form(..., min_length=1, max_length=10_000),
     image: Optional[UploadFile] = File(None),
@@ -34,7 +34,7 @@ async def analyze_text(
     raw_dict = await ai_service.analyze_text_and_image(text_content, image)
     return AnalysisResponse(**raw_dict)
 
-@router.post("/analyze/image", response_model=AnalysisResponse)
+@router.post("/analyze/image", response_model=AnalysisResponse, tags=["Analysis"])
 async def analyze_image(
     platform: str = Form(..., min_length=1, max_length=50),
     image: UploadFile = File(...),
@@ -43,7 +43,7 @@ async def analyze_image(
     raw_dict = await ai_service.analyze_text_and_image(f"Platform: {platform}", image)
     return AnalysisResponse(**raw_dict)
 
-@router.post("/analyze/phone", response_model=AnalysisResponse)
+@router.post("/analyze/phone", response_model=AnalysisResponse, tags=["Analysis"])
 async def analyze_phone(
     request: PhoneAnalysisRequest,
     phone_service: PhoneService = Depends(get_phone_service)
@@ -51,7 +51,7 @@ async def analyze_phone(
     raw_dict = await phone_service.analyze_phone_number(request.phone_number)
     return AnalysisResponse(**raw_dict)
 
-@router.post("/emergency/financial", response_model=EmergencyResponse)
+@router.post("/emergency/financial", response_model=EmergencyResponse, tags=["Emergency"])
 async def emergency_financial(
     bank_korban: str = Form(..., min_length=1, max_length=100),
     platform_kejadian: str = Form(..., min_length=1, max_length=100),
@@ -79,7 +79,7 @@ async def emergency_financial(
     raw_dict = await ai_service.process_emergency(incident_data, bukti_transfer, is_financial=True)
     return EmergencyResponse(**raw_dict)
 
-@router.post("/emergency/data-breach", response_model=EmergencyResponse)
+@router.post("/emergency/data-breach", response_model=EmergencyResponse, tags=["Emergency"])
 async def emergency_data_breach(
     jenis_data: str = Form(..., min_length=1, max_length=1_000),
     tanggal_kejadian: str = Form(..., min_length=1, max_length=10),
