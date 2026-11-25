@@ -92,11 +92,7 @@ app/
     ├── knowledge_base_cegahscam.json  # Data knowledge base pola penipuan
     └── gtc_credentials.json           # Kredensial lokal GetContact (git-ignored)
 │
-├── tests/                   # 140 automated tests (tanpa akses jaringan)
-│
-└── eval/
-    ├── evaluate_phase2.py   # Skrip evaluasi Fase 2
-    └── data/                # Dataset evaluasi (di-ignore oleh Git)
+└── tests/                   # 140 automated tests (tanpa akses jaringan)
 ```
 
 ## Pemetaan error

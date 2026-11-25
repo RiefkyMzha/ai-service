@@ -32,6 +32,6 @@ uploads/
 Thumbs.db
 
 
-# Dataset evaluasi
-eval/data/
+# Skrip & dataset evaluasi (lokal saja)
+eval/
 *.xlsx
