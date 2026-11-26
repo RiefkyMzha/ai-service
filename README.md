@@ -14,7 +14,7 @@ copy .env.example .env      # isi OPENROUTER_API_KEY dan CEGAHSCAM_API_TOKEN
 
 Lalu pilih salah satu mode di `.env`:
 
-### Opsi A: Mode Mock (Untuk Integrasi Tim Web — Tanpa Kuota & Tanpa Kredensial Eksternal)
+### Opsi A: Mode Mock (Untuk Testing tanpa limit)
 Cocok untuk menguji integrasi backend utama dan frontend tanpa memerlukan `OPENROUTER_API_KEY` maupun `gtc_credentials.json`:
 ```env
 OPENROUTER_API_KEY=
